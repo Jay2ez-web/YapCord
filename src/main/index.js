@@ -14,6 +14,7 @@ const { resolveDataDir } = require('./datadir');
 const { makeRivalGuard } = require('./rival');
 const { AppIcon } = require('./appicon');
 const { Updater } = require('./updater');
+const YAPCORD_VERSION = require('../../package.json').version;
 
 // ---- identity & storage (must happen before 'ready') -------------------------------------------------
 app.setName('YapCord');
@@ -34,7 +35,7 @@ function main() {
   const settings = new SettingsStore(path.join(dataDir, 'settings'));
   settings.load();
   const themes = new ThemeManager(path.join(dataDir, 'themes'));
-  const updater = new Updater({ currentVersion: app.getVersion(), dataDir, log });
+  const updater = new Updater({ currentVersion: YAPCORD_VERSION, dataDir, log });
   const netfilter = new NetFilter();
   // The CustomIcons plugin: your own app / tray icon (only used while that plugin is on).
   const appIcon = new AppIcon({
