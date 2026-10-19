@@ -8,6 +8,7 @@ const { buildBundle } = require('./bundle');
 const { pickFiles } = require('./filepick');
 const { fetchImage } = require('./imagefetch');
 const log = require('./log');
+const YAPCORD_VERSION = require('../../package.json').version;
 
 function isHttpUrl(u) {
   try {
@@ -64,6 +65,7 @@ function registerIpc(ctx) {
   function appInfo() {
     return {
       version: app.getVersion(),
+      yapcordVersion: YAPCORD_VERSION,
       electron: process.versions.electron,
       chrome: process.versions.chrome,
       node: process.versions.node,

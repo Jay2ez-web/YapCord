@@ -1,7 +1,10 @@
 // YapCord renderer core: boot, logging, small utilities and an event bus.
 // Every file in src/renderer is wrapped as (function (YM) { ... })(YM) by the bundler.
 
-YM.version = '1.0.6';
+const initialAppInfo = YM.initial && YM.initial.app;
+const yapcordVersion = initialAppInfo && initialAppInfo.yapcordVersion;
+const standaloneVersion = initialAppInfo && initialAppInfo.mode !== 'official' && initialAppInfo.version;
+YM.version = String(yapcordVersion || standaloneVersion || 'unknown');
 // true when YapCord runs inside the official Yapper desktop app (installed by Install-in-Yapper.bat) instead of as its own app
 YM.official = !!(YM.initial && YM.initial.app && YM.initial.app.mode === 'official');
 YM.startedAt = Date.now();
