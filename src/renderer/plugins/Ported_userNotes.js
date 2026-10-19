@@ -1,0 +1,11 @@
+(() => {
+  let editor;
+  const notesKey = "yapperEnhancedUserNotes";
+  const load = () => { try { return JSON.parse(localStorage.getItem(notesKey) || "{}"); } catch { return {}; } };
+  const save = (notes) => localStorage.setItem(notesKey, JSON.stringify(notes));
+  const close = () => { editor?.remove(); editor = null; };
+  const open = (profile, x, y) => { close(); const key = profile.getAttribute("aria-label") || profile.textContent.trim(); const notes = load(); editor = document.createElement("div"); editor.className = "ye-note-editor"; editor.innerHTML = `<strong>${key.replace(/</g, "&lt;")}</strong><textarea placeholder="Private local note…"></textarea><div><button type="button" data-save>Save</button><button type="button" data-clear>Clear</button></div>`; editor.querySelector("textarea").value = notes[key] || ""; editor.querySelector("[data-save]").onclick = () => { const value = editor.querySelector("textarea").value.trim(); const next = load(); if (value) next[key] = value; else delete next[key]; save(next); mark(profile, value); close(); }; editor.querySelector("[data-clear]").onclick = () => { const next = load(); delete next[key]; save(next); mark(profile, ""); close(); }; editor.style.left = `${Math.min(x, innerWidth - 260)}px`; editor.style.top = `${Math.min(y, innerHeight - 180)}px`; document.body.append(editor); editor.querySelector("textarea").focus(); };
+  const mark = (profile, note) => { if (note) { profile.dataset.yeNote = note; profile.title = `${profile.getAttribute("aria-label") || "User"}: ${note}`; } else { delete profile.dataset.yeNote; profile.title = profile.getAttribute("aria-label") || ""; } };
+  const apply = () => { if (!window.YESettings?.userNotes || window.__YE_USER_NOTES__) return; window.__YE_USER_NOTES__ = true; document.addEventListener("contextmenu", (event) => { const profile = event.target.closest?.("button[aria-label$=\"'s profile\"]"); if (!profile) return; event.preventDefault(); open(profile, event.clientX, event.clientY); }, true); document.addEventListener("pointerdown", (event) => { if (editor && !editor.contains(event.target)) close(); }, true); };
+  registerYEPlugin({ id: "userNotes", name: "User Notes", description: "Right-click a user profile button to save a private local note.", status: "working", defaultEnabled: false, apply });
+})();
