@@ -126,6 +126,13 @@ function main() {
     ses.setPermissionCheckHandler((wc, permission, requestingOrigin) =>
       isTrustedOrigin(requestingOrigin || (wc && wc.getURL()) || '') && ALLOWED_PERMISSIONS.has(permission),
     );
+    if (typeof ses.setDevicePermissionHandler === 'function') {
+      ses.setDevicePermissionHandler((details) => {
+        const origin = details && (details.origin || details.requestingOrigin || details.securityOrigin);
+        const device = details && details.deviceType;
+        return isTrustedOrigin(origin) && (device === 'microphone' || device === 'camera');
+      });
+    }
     netfilter.install(ses);
     installDisplayMediaHandler(ses, getWindow);
   }

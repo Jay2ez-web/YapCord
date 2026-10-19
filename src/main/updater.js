@@ -9,6 +9,7 @@ const { net } = require('electron');
 
 const REPOSITORY = 'Jay2ez-web/YapCord';
 const RELEASES_API = `https://api.github.com/repos/${REPOSITORY}/releases/latest`;
+const MANIFEST_URL = `https://raw.githubusercontent.com/${REPOSITORY}/main/latest.json`;
 const MAX_INSTALLER_BYTES = 500 * 1024 * 1024;
 
 function compareVersions(a, b) {
@@ -73,15 +74,22 @@ class Updater extends EventEmitter {
     }
     this.setState({ state: 'checking', error: null });
     try {
-      const release = await fetchJson(RELEASES_API);
-      if (release.draft || release.prerelease) {
-        this.setState({ state: 'up-to-date', available: null });
-        return this.snapshot();
+      let manifest;
+      let release = null;
+      try {
+        manifest = await fetchJson(MANIFEST_URL);
+      } catch (manifestError) {
+        // Keep compatibility with the release-asset workflow if the repository manifest is unavailable.
+        release = await fetchJson(RELEASES_API);
+        if (release.draft || release.prerelease) {
+          this.setState({ state: 'up-to-date', available: null });
+          return this.snapshot();
+        }
+        const manifestAsset = (release.assets || []).find((asset) => asset.name === 'latest.json');
+        if (!manifestAsset) throw manifestError;
+        manifest = await fetchJson(manifestAsset.browser_download_url);
       }
-      const manifestAsset = (release.assets || []).find((asset) => asset.name === 'latest.json');
-      if (!manifestAsset) throw new Error('This release has no latest.json update manifest.');
-      const manifest = await fetchJson(manifestAsset.browser_download_url);
-      const version = String(manifest.version || release.tag_name || '').replace(/^v/i, '');
+      const version = String(manifest.version || (release && release.tag_name) || '').replace(/^v/i, '');
       const installer = manifest.installer;
       if (!version || !installer || !installer.url || !installer.sha512) {
         throw new Error('The update manifest is incomplete.');
@@ -94,7 +102,7 @@ class Updater extends EventEmitter {
         state: 'available',
         available: {
           version,
-          notes: String(release.body || '').slice(0, 4000),
+          notes: String((release && release.body) || manifest.notes || '').slice(0, 4000),
           url: String(installer.url),
           sha512: String(installer.sha512).toLowerCase(),
           size: Number(installer.size) || 0,
@@ -144,4 +152,4 @@ class Updater extends EventEmitter {
   }
 }
 
-module.exports = { Updater, compareVersions, REPOSITORY };
+module.exports = { Updater, compareVersions, REPOSITORY, MANIFEST_URL };
