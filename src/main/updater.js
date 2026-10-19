@@ -77,7 +77,7 @@ class Updater extends EventEmitter {
       let manifest;
       let release = null;
       try {
-        manifest = await fetchJson(MANIFEST_URL);
+        manifest = await fetchJson(MANIFEST_URL + '?cache=' + Date.now());
       } catch (manifestError) {
         // Keep compatibility with the release-asset workflow if the repository manifest is unavailable.
         release = await fetchJson(RELEASES_API);
