@@ -1,0 +1,14 @@
+# Local app/build artifacts and credentials
+*.exe
+*.asar
+*.asar.bak
+*.zip
+.env
+.env.*
+*.p12
+*.pfx
+*.key
+node_modules/
+__pycache__/
+*.py[cod]
+release/
