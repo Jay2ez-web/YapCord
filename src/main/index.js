@@ -329,7 +329,15 @@ function main() {
     buildMenu();
     createWindow();
     createTray();
-    setTimeout(() => updater.check(), 2500);
+    setTimeout(async () => {
+      if (settings.get().updater && settings.get().updater.autoUpdate === false) return;
+      try {
+        const state = await updater.check();
+        if (state && state.state === 'available') await updater.download();
+      } catch (err) {
+        log.warn('automatic update download failed:', err && err.message);
+      }
+    }, 2500);
 
     // Keep the official Yapper app closed while YapCord runs (switch + names: App page).
     rival = makeRivalGuard({

@@ -16,6 +16,10 @@ const DEFAULTS = {
   // Layout page: the order of the main columns and sizes. These values change nothing.
   layout: { order: ['rail', 'sidebar', 'main'], railIcon: 48, sidebarWidth: 260, zoom: 100, chatText: 100, messageGap: 100 },
   useQuickCss: true,
+  updater: {
+    autoUpdate: true,
+    notifyReady: true,
+  },
   enabledThemes: [], // file names inside <userData>/themes
   themeLinks: [], // remote CSS urls
   wallpaper: {
@@ -76,7 +80,6 @@ class SettingsStore {
       const parsed = JSON.parse(raw);
       if (!isObj(parsed)) throw new Error('settings.json is not an object');
       this.data = deepMerge(clone(DEFAULTS), parsed);
-      delete this.data.updater;
     } catch (err) {
       if (err && err.code !== 'ENOENT') {
         // Corrupt file: keep a copy so nothing is lost, then start from defaults.
