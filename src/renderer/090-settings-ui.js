@@ -11,6 +11,7 @@ const PAGES = [
   { id: 'wallpaper', label: 'Wallpaper' },
   { id: 'quickcss', label: 'Custom CSS' },
   { id: 'layout', label: 'Layout' },
+  { id: 'updater', label: 'Updater' },
   { id: 'app', label: 'App', appOnly: true },
 ];
 
@@ -359,6 +360,67 @@ async function pageQuickCss(root) {
   unsub.push(YM.native.quickCss.onChange((css) => { if (document.activeElement !== ta && css !== ta.value) ta.value = css; }));
 }
 
+async function pageUpdater(root) {
+  const current = () => YM.settings.get('updater', {}) || {};
+  const set = (key, value) => YM.settings.set('updater.' + key, value);
+  const status = h('div', { class: 'ym-updater-status' }, 'Checking for updates…');
+  const details = h('div', { class: 'ym-updater-details' });
+  const message = h('div', { class: 'ym-updater-message', hidden: true });
+  const actions = h('div', { class: 'ym-toolbar' });
+  const lastChecked = h('div', { class: 'ym-hint' }, 'Last checked: Never');
+  let notifiedVersion = '';
+
+  const setMessage = (text, type = 'error') => {
+    message.textContent = text;
+    message.className = 'ym-updater-message ' + type;
+    message.hidden = !text;
+  };
+  const render = (state) => {
+    const s = state || { state: 'unknown' };
+    const version = s.available && s.available.version ? ` v${s.available.version}` : '';
+    const labels = {
+      checking: 'Checking for updates…',
+      'up-to-date': 'You are up to date.',
+      available: `Update available${version}`,
+      downloading: 'Downloading update in the background…',
+      ready: `Update${version} is ready to install.`,
+      installing: 'Restarting to install update…',
+      unsupported: 'Updates are only available in the packaged Windows client.',
+      idle: 'Not checked yet.',
+      error: 'Update check failed.',
+      unknown: 'Update status unavailable.',
+    };
+    status.textContent = labels[s.state] || ('Update status: ' + s.state);
+    details.replaceChildren();
+    actions.replaceChildren();
+    setMessage(s.state === 'error' ? (s.error || 'The update service returned an unknown error.') : '', 'error');
+    if (s.state === 'error') details.append(h('span', { class: 'ym-hint' }, 'Check your internet connection and try again.'));
+    if (s.state === 'ready') details.append(h('span', { class: 'ym-hint' }, 'The verified installer is downloaded and will replace YapCord after you restart.'));
+    if (s.state === 'available') actions.append(btn('Download update', async () => { try { render(await YM.native.app.downloadUpdate()); } catch (err) { render({ state: 'error', error: err.message }); } }));
+    if (s.state === 'ready') actions.append(btn('Install and restart', async () => { try { await YM.native.app.installUpdate(); render({ state: 'installing' }); } catch (err) { render({ state: 'error', error: err.message }); } }));
+    if (!['checking', 'downloading', 'installing'].includes(s.state)) actions.append(btn('Check for Updates', async () => { setMessage(''); try { render(await YM.native.app.checkForUpdates()); } catch (err) { render({ state: 'error', error: err.message }); } }, 'ym-btn-update'));
+    lastChecked.textContent = 'Last checked: ' + new Date().toLocaleString();
+    if (s.state === 'ready' && current().notifyReady && notifiedVersion !== (s.available && s.available.version)) {
+      notifiedVersion = s.available && s.available.version || 'ready';
+      YM.toast('A YapCord update is ready to install.', { type: 'success' });
+    }
+  };
+
+  root.append(
+    h('h2', {}, 'YapCord Updater'),
+    toggleRow('Automatically update', 'Download new versions in the background. They will be ready the next time you restart YapCord.', current().autoUpdate !== false, (v) => set('autoUpdate', v)),
+    toggleRow('Get notified when an update is ready', 'Show a message when a new version has been downloaded and verified.', current().notifyReady !== false, (v) => set('notifyReady', v)),
+    section('Repo',
+      h('div', { class: 'ym-repo-row' },
+        h('input', { class: 'ym-input', value: 'Jay2ez-web/YapCord', readOnly: true, spellcheck: 'false' }),
+        btn('Open on GitHub', () => YM.native.openExternal('https://github.com/Jay2ez-web/YapCord'), 'ym-btn-ghost')),
+      h('p', { class: 'hint' }, `The GitHub repository YapCord updates from. You have version ${YM.version || '1.0.0'}. Only releases with a higher version number are accepted.`)),
+    section('Updates', status, details, message, actions, lastChecked),
+  );
+  YM.native.app.updateStatus().then(render).catch((err) => render({ state: 'error', error: err.message }));
+  unsub.push(YM.native.app.onUpdateState(render));
+}
+
 async function pageApp(root) {
   const w = (k, d) => YM.settings.get('window.' + k, d);
   const set = (k) => (v) => YM.settings.set('window.' + k, v);
@@ -392,35 +454,6 @@ async function pageApp(root) {
     h('div', { class: 'ym-toolbar', style: { marginTop: '14px' } },
       btn('Reload', () => YM.native.app.reload()), btn('Restart app', () => YM.native.app.relaunch(), 'ym-btn-ghost'), btn('DevTools', () => YM.native.app.devtools(), 'ym-btn-ghost'),
       btn('Quit', () => YM.native.app.quit(), 'ym-btn-danger')));
-
-  const updateStatus = h('div', { class: 'ym-updater-status' }, 'Checking for updates…');
-  const updateNote = h('p', { class: 'ym-hint' }, 'Updates are downloaded from the YapCord GitHub releases page and verified before installation. Nothing installs automatically.');
-  const updateActions = h('div', { class: 'ym-toolbar' });
-  const updatePanel = h('div', { class: 'ym-card ym-updater' }, h('h3', {}, 'Updates'), updateStatus, updateNote, updateActions);
-  root.append(updatePanel);
-  function renderUpdate(state) {
-    const s = state || { state: 'unknown' };
-    const version = s.available && s.available.version ? ` · v${s.available.version}` : '';
-    const labels = {
-      checking: 'Checking for updates…', 'up-to-date': 'You are up to date.', available: `Update available${version}.`,
-      downloading: 'Downloading and verifying update…', ready: `Update v${s.available?.version || ''} is ready to install.`,
-      installing: 'Restarting to install update…', unsupported: 'Updates are only available in the packaged Windows client.',
-      error: 'Update check failed: ' + (s.error || 'unknown error'), idle: 'Not checked yet.', unknown: 'Update status unavailable.',
-    };
-    updateStatus.textContent = labels[s.state] || ('Update status: ' + s.state);
-    updateActions.replaceChildren();
-    if (s.state === 'available') updateActions.append(btn('Download update', async () => {
-      try { renderUpdate(await YM.native.app.downloadUpdate()); } catch (err) { renderUpdate({ state: 'error', error: err.message }); }
-    }));
-    if (s.state === 'ready') updateActions.append(btn('Install and restart', async () => {
-      try { await YM.native.app.installUpdate(); renderUpdate({ state: 'installing' }); } catch (err) { renderUpdate({ state: 'error', error: err.message }); }
-    }));
-    if (s.state !== 'downloading' && s.state !== 'installing') updateActions.append(btn('Check now', async () => {
-      try { renderUpdate(await YM.native.app.checkForUpdates()); } catch (err) { renderUpdate({ state: 'error', error: err.message }); }
-    }, 'ym-btn-ghost'));
-  }
-  YM.native.app.updateStatus().then(renderUpdate).catch((err) => renderUpdate({ state: 'error', error: err.message }));
-  unsub.push(YM.native.app.onUpdateState(renderUpdate));
 
   const setup = btn('Open first-run setup', () => YM.onboarding && YM.onboarding.open(0), 'ym-btn-ghost');
   root.append(h('div', { class: 'ym-toolbar' }, setup));
@@ -513,7 +546,7 @@ function pageLayout(root) {
   unsub.push(YM.Events.on('layout:change', () => { if (!body.contains(document.activeElement)) draw(); }));
 }
 
-const RENDER = { plugins: pagePlugins, themes: pageThemes, wallpaper: pageWallpaper, quickcss: pageQuickCss, layout: pageLayout, app: pageApp };
+const RENDER = { plugins: pagePlugins, themes: pageThemes, wallpaper: pageWallpaper, quickcss: pageQuickCss, layout: pageLayout, updater: pageUpdater, app: pageApp };
 
 // ---- injection into Yapper's settings modal ------------------------------------------------------
 function currentSettingsEl() {
@@ -633,7 +666,15 @@ YM.dom.css.set('settings-ui', `
 .ym-lay-arrows{display:flex;gap:6px}.ym-lay-arrows .ym-btn[disabled]{opacity:.35;cursor:default}
 .ym-lay-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.ym-lay-val{color:var(--text-muted);font-size:12px;font-variant-numeric:tabular-nums}
 .ym-range{width:100%;accent-color:var(--accent)}
-.ym-updater-status{font-size:15px;font-weight:600;margin:4px 0 8px}
+  .ym-updater-status{font-size:15px;font-weight:600;margin:4px 0 8px}
+  .ym-repo-row{display:flex;gap:8px;align-items:center}
+  .ym-repo-row .ym-input{flex:1}
+  .ym-updater-message{margin:10px 0;padding:10px 12px;border-radius:9px;font-size:12.5px;line-height:1.4}
+  .ym-updater-message[hidden]{display:none}
+  .ym-updater-message.error{background:color-mix(in srgb,#e85d8c 18%,var(--bg-elev));color:#e85d8c;border:1px solid color-mix(in srgb,#e85d8c 35%,transparent)}
+  .ym-updater-message.success{background:color-mix(in srgb,#55b85a 18%,var(--bg-elev));color:#55b85a}
+  .ym-btn-update{background:#8b3dce!important;color:#fff!important;border-radius:9px}
+  .ym-btn-update:hover{background:#a14be7!important}
 .ym-icon-row{display:flex;flex-direction:column;gap:6px;width:100%}
 .ym-toast-btn{margin-left:10px;padding:4px 10px;border-radius:7px;background:var(--accent,#5865f2);color:var(--on-accent,#fff);font-weight:700;font-size:12px;cursor:pointer}
 `);
@@ -644,7 +685,8 @@ YM.dom.css.set('settings-ui-yapp', `
 .ym-nav-label{font-size:11px!important;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted)!important}
 .ym-nav-btn{display:block;width:100%;box-sizing:border-box;text-align:left;padding:8px 12px;margin:2px 0;border-radius:9px;border:1px solid transparent;background:transparent;color:var(--text);font:inherit;cursor:pointer}
 .ym-nav-btn:hover{background:rgba(255,255,255,.07)}
-.ym-nav-btn.active{border-color:var(--text);background:color-mix(in srgb,currentColor 10%,transparent);color:#e87fb3;font-weight:700}
+  .ym-nav-btn.active{border-color:var(--text);background:color-mix(in srgb,currentColor 10%,transparent);color:#e87fb3;font-weight:700}
+  .ym-nav-btn[data-ym-page="updater"].active{background:color-mix(in srgb,var(--text) 16%,transparent);color:var(--text);border-color:transparent}
 .ym-hero h1{margin:0;font-size:30px;font-weight:800;color:var(--text);letter-spacing:-.01em}
 .ym-hero p{margin:2px 0 0;color:var(--text);font-size:14px;font-weight:500}
 .ym-hero-div{height:1px;background:var(--border);margin:14px 0 18px}
