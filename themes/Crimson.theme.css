@@ -1,0 +1,56 @@
+/**
+ * @name Crimson
+ * @author YapCord
+ * @version 1.0.0
+ * @description Near-black theme with deep red surfaces and a vivid crimson accent.
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #0f0608;
+  --bg-side: #160a0d;
+  --bg-main: #1e0f13;
+  --bg-elev: #2b161c;
+  --bg-hover: #351c23;
+  --bg-active: #46252e;
+  --bg-input: #160a0d;
+  --bg-float: #160a0d;
+  --bg-side-solid: #160a0d;
+  --text: #f3e6e8;
+  --text-muted: #bfa0a6;
+  --text-faint: #876a70;
+  --border: #ffffff12;
+  --accent: #ff4d6d;
+  --accent-hover: #f03a5b;
+  --accent-soft: #ff4d6d29;
+  --on-accent: #ffffff;
+  --danger: #ff6b6b;
+  --success: #3fcf82;
+  --warning: #f5b544;
+  --shadow: 0 10px 40px #00000073;
+  color-scheme: dark;
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+}
+
+/* keep Yapper's own light-mode tweaks from leaking into this dark theme */
+:root[data-theme="light"] .msg:hover,
+:root[data-theme="light"] .msg.menu-open,
+:root[data-theme="light"] .msg.editing {
+  background: #0000001f;
+}
+:root[data-theme="light"] .drop-overlay {
+  background: #141519d9;
+}
+:root[data-theme="light"] .overlay {
+  background: #0009;
+}
+:root[data-theme="light"] .voice-view {
+  background: #0f0608;
+}
+:root[data-theme="light"] .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #80848e;
+}
+:root[data-theme="light"] .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #80848e;
+}

@@ -1,0 +1,62 @@
+/**
+ * @name Solarized Light
+ * @author YapCord
+ * @version 1.0.0
+ * @description Easy-on-the-eyes cream light theme using the Solarized colour palette (MIT).
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #eee8d5;
+  --bg-side: #f5efdc;
+  --bg-main: #fdf6e3;
+  --bg-elev: #f1ebd8;
+  --bg-hover: #ebe4cf;
+  --bg-active: #ddd6c1;
+  --bg-input: #f5efdc;
+  --bg-float: #f1ebd8;
+  --bg-side-solid: #f5efdc;
+  --text: #586e75;
+  --text-muted: #657b83;
+  --text-faint: #93a1a1;
+  --border: #00000017;
+  --accent: #268bd2;
+  --accent-hover: #1c7bbf;
+  --accent-soft: #268bd229;
+  --on-accent: #fdf6e3;
+  --danger: #dc322f;
+  --success: #859900;
+  --warning: #b58900;
+  --shadow: 0 10px 34px #00000029;
+  color-scheme: light;
+  --lightningcss-light: initial;
+  --lightningcss-dark: ;
+}
+
+/* Yapper's light-mode tweaks, so this light theme also looks right while Yapper itself is set to dark */
+:root:not([data-theme="light"]) .msg:hover,
+:root:not([data-theme="light"]) .msg.menu-open,
+:root:not([data-theme="light"]) .msg.editing {
+  background: #00000009;
+}
+:root:not([data-theme="light"]) .drop-overlay {
+  background: #ffffffe6;
+}
+:root:not([data-theme="light"]) .overlay {
+  background: #0006;
+}
+:root:not([data-theme="light"]) .overlay.clear {
+  background: 0 0;
+}
+:root:not([data-theme="light"]) .voice-view {
+  background: #f5efdc;
+}
+:root:not([data-theme="light"]) .voice-tile.screen {
+  background: #000;
+}
+:root:not([data-theme="light"]) .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #9a9ca5;
+}
+:root:not([data-theme="light"]) .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #9a9ca5;
+}

@@ -1,0 +1,56 @@
+/**
+ * @name One Dark
+ * @author YapCord
+ * @version 1.0.0
+ * @description Balanced blue-grey dark theme using the One Dark colour palette (MIT).
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #1b1d23;
+  --bg-side: #21252b;
+  --bg-main: #282c34;
+  --bg-elev: #2c313a;
+  --bg-hover: #333842;
+  --bg-active: #3e4451;
+  --bg-input: #21252b;
+  --bg-float: #21252b;
+  --bg-side-solid: #21252b;
+  --text: #bcc2cd;
+  --text-muted: #9aa1ad;
+  --text-faint: #636d83;
+  --border: #ffffff12;
+  --accent: #61afef;
+  --accent-hover: #4f9fe2;
+  --accent-soft: #61afef29;
+  --on-accent: #1b1d23;
+  --danger: #e06c75;
+  --success: #98c379;
+  --warning: #e5c07b;
+  --shadow: 0 10px 40px #00000073;
+  color-scheme: dark;
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+}
+
+/* keep Yapper's own light-mode tweaks from leaking into this dark theme */
+:root[data-theme="light"] .msg:hover,
+:root[data-theme="light"] .msg.menu-open,
+:root[data-theme="light"] .msg.editing {
+  background: #0000001f;
+}
+:root[data-theme="light"] .drop-overlay {
+  background: #141519d9;
+}
+:root[data-theme="light"] .overlay {
+  background: #0009;
+}
+:root[data-theme="light"] .voice-view {
+  background: #1b1d23;
+}
+:root[data-theme="light"] .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #80848e;
+}
+:root[data-theme="light"] .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #80848e;
+}

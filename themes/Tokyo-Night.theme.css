@@ -1,0 +1,56 @@
+/**
+ * @name Tokyo Night
+ * @author YapCord
+ * @version 1.0.0
+ * @description Deep blue-violet theme using the Tokyo Night colour palette (MIT).
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #13131a;
+  --bg-side: #16161e;
+  --bg-main: #1a1b26;
+  --bg-elev: #202335;
+  --bg-hover: #292e42;
+  --bg-active: #343b58;
+  --bg-input: #16161e;
+  --bg-float: #16161e;
+  --bg-side-solid: #16161e;
+  --text: #c0caf5;
+  --text-muted: #a9b1d6;
+  --text-faint: #565f89;
+  --border: #ffffff12;
+  --accent: #7aa2f7;
+  --accent-hover: #6a92e8;
+  --accent-soft: #7aa2f729;
+  --on-accent: #16161e;
+  --danger: #f7768e;
+  --success: #9ece6a;
+  --warning: #e0af68;
+  --shadow: 0 10px 40px #00000073;
+  color-scheme: dark;
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+}
+
+/* keep Yapper's own light-mode tweaks from leaking into this dark theme */
+:root[data-theme="light"] .msg:hover,
+:root[data-theme="light"] .msg.menu-open,
+:root[data-theme="light"] .msg.editing {
+  background: #0000001f;
+}
+:root[data-theme="light"] .drop-overlay {
+  background: #141519d9;
+}
+:root[data-theme="light"] .overlay {
+  background: #0009;
+}
+:root[data-theme="light"] .voice-view {
+  background: #13131a;
+}
+:root[data-theme="light"] .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #80848e;
+}
+:root[data-theme="light"] .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #80848e;
+}

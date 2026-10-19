@@ -1,0 +1,56 @@
+/**
+ * @name Dracula
+ * @author YapCord
+ * @version 1.0.0
+ * @description Purple-tinted dark theme using the Dracula colour palette (MIT).
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #191a21;
+  --bg-side: #21222c;
+  --bg-main: #282a36;
+  --bg-elev: #343746;
+  --bg-hover: #3a3d4f;
+  --bg-active: #44475a;
+  --bg-input: #21222c;
+  --bg-float: #21222c;
+  --bg-side-solid: #21222c;
+  --text: #f8f8f2;
+  --text-muted: #c0c3d6;
+  --text-faint: #6f7bb0;
+  --border: #ffffff12;
+  --accent: #bd93f9;
+  --accent-hover: #a97ef0;
+  --accent-soft: #bd93f929;
+  --on-accent: #282a36;
+  --danger: #ff5555;
+  --success: #50fa7b;
+  --warning: #f1fa8c;
+  --shadow: 0 10px 40px #00000073;
+  color-scheme: dark;
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+}
+
+/* keep Yapper's own light-mode tweaks from leaking into this dark theme */
+:root[data-theme="light"] .msg:hover,
+:root[data-theme="light"] .msg.menu-open,
+:root[data-theme="light"] .msg.editing {
+  background: #0000001f;
+}
+:root[data-theme="light"] .drop-overlay {
+  background: #141519d9;
+}
+:root[data-theme="light"] .overlay {
+  background: #0009;
+}
+:root[data-theme="light"] .voice-view {
+  background: #191a21;
+}
+:root[data-theme="light"] .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #80848e;
+}
+:root[data-theme="light"] .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #80848e;
+}

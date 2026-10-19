@@ -1,0 +1,62 @@
+/**
+ * @name Catppuccin Latte
+ * @author YapCord
+ * @version 1.0.0
+ * @description Warm pastel light theme using the Catppuccin Latte colour palette (MIT).
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #dce0e8;
+  --bg-side: #e6e9ef;
+  --bg-main: #eff1f5;
+  --bg-elev: #e3e6ec;
+  --bg-hover: #dde1e8;
+  --bg-active: #ccd0da;
+  --bg-input: #e6e9ef;
+  --bg-float: #e3e6ec;
+  --bg-side-solid: #e6e9ef;
+  --text: #4c4f69;
+  --text-muted: #6c6f85;
+  --text-faint: #8c8fa1;
+  --border: #00000017;
+  --accent: #8839ef;
+  --accent-hover: #7527d6;
+  --accent-soft: #8839ef29;
+  --on-accent: #ffffff;
+  --danger: #d20f39;
+  --success: #40a02b;
+  --warning: #df8e1d;
+  --shadow: 0 10px 34px #00000029;
+  color-scheme: light;
+  --lightningcss-light: initial;
+  --lightningcss-dark: ;
+}
+
+/* Yapper's light-mode tweaks, so this light theme also looks right while Yapper itself is set to dark */
+:root:not([data-theme="light"]) .msg:hover,
+:root:not([data-theme="light"]) .msg.menu-open,
+:root:not([data-theme="light"]) .msg.editing {
+  background: #00000009;
+}
+:root:not([data-theme="light"]) .drop-overlay {
+  background: #ffffffe6;
+}
+:root:not([data-theme="light"]) .overlay {
+  background: #0006;
+}
+:root:not([data-theme="light"]) .overlay.clear {
+  background: 0 0;
+}
+:root:not([data-theme="light"]) .voice-view {
+  background: #e6e9ef;
+}
+:root:not([data-theme="light"]) .voice-tile.screen {
+  background: #000;
+}
+:root:not([data-theme="light"]) .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #9a9ca5;
+}
+:root:not([data-theme="light"]) .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #9a9ca5;
+}

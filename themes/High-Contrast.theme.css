@@ -1,0 +1,62 @@
+/**
+ * @name High Contrast
+ * @author YapCord
+ * @version 1.0.0
+ * @description Pure black with bright text, strong borders and a yellow accent for maximum readability.
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #000000;
+  --bg-side: #000000;
+  --bg-main: #000000;
+  --bg-elev: #121212;
+  --bg-hover: #1e1e1e;
+  --bg-active: #2d2d2d;
+  --bg-input: #0a0a0a;
+  --bg-float: #000000;
+  --bg-side-solid: #000000;
+  --text: #ffffff;
+  --text-muted: #e0e0e0;
+  --text-faint: #b0b0b0;
+  --border: #ffffff66;
+  --accent: #ffd60a;
+  --accent-hover: #ffe14d;
+  --accent-soft: #ffd60a29;
+  --on-accent: #000000;
+  --danger: #ff6b6b;
+  --success: #4cff8f;
+  --warning: #ffd60a;
+  --shadow: 0 10px 40px #00000073;
+  color-scheme: dark;
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+}
+
+/* keep Yapper's own light-mode tweaks from leaking into this dark theme */
+:root[data-theme="light"] .msg:hover,
+:root[data-theme="light"] .msg.menu-open,
+:root[data-theme="light"] .msg.editing {
+  background: #0000001f;
+}
+:root[data-theme="light"] .drop-overlay {
+  background: #141519d9;
+}
+:root[data-theme="light"] .overlay {
+  background: #0009;
+}
+:root[data-theme="light"] .voice-view {
+  background: #000000;
+}
+:root[data-theme="light"] .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #80848e;
+}
+:root[data-theme="light"] .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #80848e;
+}
+
+/* a visible outline on whatever has keyboard focus */
+:focus-visible {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+}

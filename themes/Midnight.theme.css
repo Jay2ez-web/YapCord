@@ -1,0 +1,20 @@
+/**
+ * @name Midnight
+ * @author YapCord
+ * @version 1.0.0
+ * @description A deeper, bluer dark theme. Shows how themes work: override Yapper's CSS variables.
+ */
+:root {
+  --bg-rail: #0a0b10;
+  --bg-side: #0f1118;
+  --bg-main: #141722;
+  --bg-elev: #1b1f2d;
+  --bg-hover: #222739;
+  --bg-active: #2b3248;
+  --bg-input: #1a1e2b;
+  --accent: #6c8cff;
+  --accent-hover: #5877f0;
+  --accent-soft: #6c8cff29;
+  --bg-float: #0f1118;
+  --bg-side-solid: #0f1118;
+}

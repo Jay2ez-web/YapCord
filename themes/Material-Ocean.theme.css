@@ -1,0 +1,56 @@
+/**
+ * @name Material Ocean
+ * @author YapCord
+ * @version 1.0.0
+ * @description Deep navy theme with soft pastel accents (Material Ocean style colours).
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #090b10;
+  --bg-side: #0b0d14;
+  --bg-main: #0f111a;
+  --bg-elev: #1a1c25;
+  --bg-hover: #1f2233;
+  --bg-active: #292d3e;
+  --bg-input: #090b10;
+  --bg-float: #0b0d14;
+  --bg-side-solid: #0b0d14;
+  --text: #a6accd;
+  --text-muted: #8f93a2;
+  --text-faint: #4b526d;
+  --border: #ffffff12;
+  --accent: #82aaff;
+  --accent-hover: #6e98f0;
+  --accent-soft: #82aaff29;
+  --on-accent: #0f111a;
+  --danger: #ff5370;
+  --success: #c3e88d;
+  --warning: #ffcb6b;
+  --shadow: 0 10px 40px #00000073;
+  color-scheme: dark;
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+}
+
+/* keep Yapper's own light-mode tweaks from leaking into this dark theme */
+:root[data-theme="light"] .msg:hover,
+:root[data-theme="light"] .msg.menu-open,
+:root[data-theme="light"] .msg.editing {
+  background: #0000001f;
+}
+:root[data-theme="light"] .drop-overlay {
+  background: #141519d9;
+}
+:root[data-theme="light"] .overlay {
+  background: #0009;
+}
+:root[data-theme="light"] .voice-view {
+  background: #090b10;
+}
+:root[data-theme="light"] .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #80848e;
+}
+:root[data-theme="light"] .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #80848e;
+}

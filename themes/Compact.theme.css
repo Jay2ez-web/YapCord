@@ -1,0 +1,9 @@
+/**
+ * @name Compact
+ * @author YapCord
+ * @version 1.0.0
+ * @description Slightly tighter spacing between messages.
+ */
+.msg { padding-top: 1px; padding-bottom: 1px; }
+.msg:not(.grouped) { margin-top: 6px; }
+.msg-text { line-height: 1.35; }

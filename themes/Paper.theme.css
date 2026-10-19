@@ -1,0 +1,62 @@
+/**
+ * @name Paper
+ * @author YapCord
+ * @version 1.0.0
+ * @description Warm off-white light theme that is easy to read in daylight.
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #e9e4d8;
+  --bg-side: #f1ede2;
+  --bg-main: #faf7f0;
+  --bg-elev: #eee8da;
+  --bg-hover: #e7e0cf;
+  --bg-active: #dbd3bf;
+  --bg-input: #efe9db;
+  --bg-float: #eee8da;
+  --bg-side-solid: #f1ede2;
+  --text: #2d2a24;
+  --text-muted: #6a6458;
+  --text-faint: #968f80;
+  --border: #00000017;
+  --accent: #b4532a;
+  --accent-hover: #a14622;
+  --accent-soft: #b4532a29;
+  --on-accent: #ffffff;
+  --danger: #c8372d;
+  --success: #2f8f4e;
+  --warning: #b7791f;
+  --shadow: 0 10px 34px #00000029;
+  color-scheme: light;
+  --lightningcss-light: initial;
+  --lightningcss-dark: ;
+}
+
+/* Yapper's light-mode tweaks, so this light theme also looks right while Yapper itself is set to dark */
+:root:not([data-theme="light"]) .msg:hover,
+:root:not([data-theme="light"]) .msg.menu-open,
+:root:not([data-theme="light"]) .msg.editing {
+  background: #00000009;
+}
+:root:not([data-theme="light"]) .drop-overlay {
+  background: #ffffffe6;
+}
+:root:not([data-theme="light"]) .overlay {
+  background: #0006;
+}
+:root:not([data-theme="light"]) .overlay.clear {
+  background: 0 0;
+}
+:root:not([data-theme="light"]) .voice-view {
+  background: #f1ede2;
+}
+:root:not([data-theme="light"]) .voice-tile.screen {
+  background: #000;
+}
+:root:not([data-theme="light"]) .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #9a9ca5;
+}
+:root:not([data-theme="light"]) .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #9a9ca5;
+}

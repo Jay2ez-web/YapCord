@@ -1,0 +1,56 @@
+/**
+ * @name Forest
+ * @author YapCord
+ * @version 1.0.0
+ * @description Calm dark green theme with a fresh mint accent.
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #0b130e;
+  --bg-side: #0f1a13;
+  --bg-main: #14211a;
+  --bg-elev: #1c2d23;
+  --bg-hover: #223629;
+  --bg-active: #2c4535;
+  --bg-input: #0f1a13;
+  --bg-float: #0f1a13;
+  --bg-side-solid: #0f1a13;
+  --text: #e3efe6;
+  --text-muted: #9db8a5;
+  --text-faint: #66826f;
+  --border: #ffffff12;
+  --accent: #5fd38a;
+  --accent-hover: #4cc277;
+  --accent-soft: #5fd38a29;
+  --on-accent: #0b130e;
+  --danger: #f2555a;
+  --success: #5fd38a;
+  --warning: #f5b544;
+  --shadow: 0 10px 40px #00000073;
+  color-scheme: dark;
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+}
+
+/* keep Yapper's own light-mode tweaks from leaking into this dark theme */
+:root[data-theme="light"] .msg:hover,
+:root[data-theme="light"] .msg.menu-open,
+:root[data-theme="light"] .msg.editing {
+  background: #0000001f;
+}
+:root[data-theme="light"] .drop-overlay {
+  background: #141519d9;
+}
+:root[data-theme="light"] .overlay {
+  background: #0009;
+}
+:root[data-theme="light"] .voice-view {
+  background: #0b130e;
+}
+:root[data-theme="light"] .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #80848e;
+}
+:root[data-theme="light"] .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #80848e;
+}

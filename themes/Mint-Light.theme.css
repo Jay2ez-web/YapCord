@@ -1,0 +1,62 @@
+/**
+ * @name Mint Light
+ * @author YapCord
+ * @version 1.0.0
+ * @description Fresh light theme with pale green surfaces and a teal accent.
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #d7ece3;
+  --bg-side: #e4f3ec;
+  --bg-main: #f4fbf7;
+  --bg-elev: #e2f1ea;
+  --bg-hover: #d8eae0;
+  --bg-active: #c6dfd2;
+  --bg-input: #e4f3ec;
+  --bg-float: #e2f1ea;
+  --bg-side-solid: #e4f3ec;
+  --text: #1d3029;
+  --text-muted: #4f6b60;
+  --text-faint: #7f998d;
+  --border: #00000017;
+  --accent: #0f9d84;
+  --accent-hover: #0c8a73;
+  --accent-soft: #0f9d8429;
+  --on-accent: #ffffff;
+  --danger: #d6394a;
+  --success: #2a9d5c;
+  --warning: #c47f17;
+  --shadow: 0 10px 34px #00000029;
+  color-scheme: light;
+  --lightningcss-light: initial;
+  --lightningcss-dark: ;
+}
+
+/* Yapper's light-mode tweaks, so this light theme also looks right while Yapper itself is set to dark */
+:root:not([data-theme="light"]) .msg:hover,
+:root:not([data-theme="light"]) .msg.menu-open,
+:root:not([data-theme="light"]) .msg.editing {
+  background: #00000009;
+}
+:root:not([data-theme="light"]) .drop-overlay {
+  background: #ffffffe6;
+}
+:root:not([data-theme="light"]) .overlay {
+  background: #0006;
+}
+:root:not([data-theme="light"]) .overlay.clear {
+  background: 0 0;
+}
+:root:not([data-theme="light"]) .voice-view {
+  background: #e4f3ec;
+}
+:root:not([data-theme="light"]) .voice-tile.screen {
+  background: #000;
+}
+:root:not([data-theme="light"]) .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #9a9ca5;
+}
+:root:not([data-theme="light"]) .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #9a9ca5;
+}

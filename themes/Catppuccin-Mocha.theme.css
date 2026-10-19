@@ -1,0 +1,56 @@
+/**
+ * @name Catppuccin Mocha
+ * @author YapCord
+ * @version 1.0.0
+ * @description Soft pastel dark theme using the Catppuccin Mocha colour palette (MIT).
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #11111b;
+  --bg-side: #181825;
+  --bg-main: #1e1e2e;
+  --bg-elev: #2a2b3c;
+  --bg-hover: #313244;
+  --bg-active: #45475a;
+  --bg-input: #181825;
+  --bg-float: #181825;
+  --bg-side-solid: #181825;
+  --text: #cdd6f4;
+  --text-muted: #a6adc8;
+  --text-faint: #7f849c;
+  --border: #ffffff12;
+  --accent: #cba6f7;
+  --accent-hover: #b794f0;
+  --accent-soft: #cba6f729;
+  --on-accent: #1e1e2e;
+  --danger: #f38ba8;
+  --success: #a6e3a1;
+  --warning: #f9e2af;
+  --shadow: 0 10px 40px #00000073;
+  color-scheme: dark;
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+}
+
+/* keep Yapper's own light-mode tweaks from leaking into this dark theme */
+:root[data-theme="light"] .msg:hover,
+:root[data-theme="light"] .msg.menu-open,
+:root[data-theme="light"] .msg.editing {
+  background: #0000001f;
+}
+:root[data-theme="light"] .drop-overlay {
+  background: #141519d9;
+}
+:root[data-theme="light"] .overlay {
+  background: #0009;
+}
+:root[data-theme="light"] .voice-view {
+  background: #11111b;
+}
+:root[data-theme="light"] .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #80848e;
+}
+:root[data-theme="light"] .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #80848e;
+}

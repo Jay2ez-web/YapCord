@@ -1,0 +1,56 @@
+/**
+ * @name Gruvbox Dark
+ * @author YapCord
+ * @version 1.0.0
+ * @description Retro warm dark theme using the Gruvbox colour palette (MIT).
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #171819;
+  --bg-side: #1d2021;
+  --bg-main: #282828;
+  --bg-elev: #32302f;
+  --bg-hover: #3c3836;
+  --bg-active: #504945;
+  --bg-input: #1d2021;
+  --bg-float: #1d2021;
+  --bg-side-solid: #1d2021;
+  --text: #ebdbb2;
+  --text-muted: #bdae93;
+  --text-faint: #928374;
+  --border: #ffffff12;
+  --accent: #fe8019;
+  --accent-hover: #ef7010;
+  --accent-soft: #fe801929;
+  --on-accent: #1d2021;
+  --danger: #fb4934;
+  --success: #b8bb26;
+  --warning: #fabd2f;
+  --shadow: 0 10px 40px #00000073;
+  color-scheme: dark;
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+}
+
+/* keep Yapper's own light-mode tweaks from leaking into this dark theme */
+:root[data-theme="light"] .msg:hover,
+:root[data-theme="light"] .msg.menu-open,
+:root[data-theme="light"] .msg.editing {
+  background: #0000001f;
+}
+:root[data-theme="light"] .drop-overlay {
+  background: #141519d9;
+}
+:root[data-theme="light"] .overlay {
+  background: #0009;
+}
+:root[data-theme="light"] .voice-view {
+  background: #171819;
+}
+:root[data-theme="light"] .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #80848e;
+}
+:root[data-theme="light"] .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #80848e;
+}

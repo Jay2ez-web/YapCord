@@ -1,0 +1,56 @@
+/**
+ * @name Synthwave
+ * @author YapCord
+ * @version 1.0.0
+ * @description Neon purple and pink night theme in the style of Synthwave '84.
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #171520;
+  --bg-side: #1e1a2d;
+  --bg-main: #262335;
+  --bg-elev: #302b48;
+  --bg-hover: #382f57;
+  --bg-active: #443a6b;
+  --bg-input: #1e1a2d;
+  --bg-float: #1e1a2d;
+  --bg-side-solid: #1e1a2d;
+  --text: #f4eee4;
+  --text-muted: #b6aed0;
+  --text-faint: #7b72a1;
+  --border: #ffffff12;
+  --accent: #ff7edb;
+  --accent-hover: #f266c9;
+  --accent-soft: #ff7edb29;
+  --on-accent: #241b2f;
+  --danger: #fe4450;
+  --success: #72f1b8;
+  --warning: #fede5d;
+  --shadow: 0 10px 40px #00000073;
+  color-scheme: dark;
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+}
+
+/* keep Yapper's own light-mode tweaks from leaking into this dark theme */
+:root[data-theme="light"] .msg:hover,
+:root[data-theme="light"] .msg.menu-open,
+:root[data-theme="light"] .msg.editing {
+  background: #0000001f;
+}
+:root[data-theme="light"] .drop-overlay {
+  background: #141519d9;
+}
+:root[data-theme="light"] .overlay {
+  background: #0009;
+}
+:root[data-theme="light"] .voice-view {
+  background: #171520;
+}
+:root[data-theme="light"] .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #80848e;
+}
+:root[data-theme="light"] .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #80848e;
+}

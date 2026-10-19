@@ -1,0 +1,56 @@
+/**
+ * @name Nord
+ * @author YapCord
+ * @version 1.0.0
+ * @description Cool arctic blues and greys from the Nord colour palette (MIT).
+ */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg-rail: #242933;
+  --bg-side: #2e3440;
+  --bg-main: #353c4a;
+  --bg-elev: #3f4859;
+  --bg-hover: #454f62;
+  --bg-active: #4c566a;
+  --bg-input: #2e3440;
+  --bg-float: #2e3440;
+  --bg-side-solid: #2e3440;
+  --text: #eceff4;
+  --text-muted: #c3cbd9;
+  --text-faint: #8892a7;
+  --border: #ffffff12;
+  --accent: #88c0d0;
+  --accent-hover: #7ab4c5;
+  --accent-soft: #88c0d029;
+  --on-accent: #2e3440;
+  --danger: #bf616a;
+  --success: #a3be8c;
+  --warning: #ebcb8b;
+  --shadow: 0 10px 40px #00000073;
+  color-scheme: dark;
+  --lightningcss-light: ;
+  --lightningcss-dark: initial;
+}
+
+/* keep Yapper's own light-mode tweaks from leaking into this dark theme */
+:root[data-theme="light"] .msg:hover,
+:root[data-theme="light"] .msg.menu-open,
+:root[data-theme="light"] .msg.editing {
+  background: #0000001f;
+}
+:root[data-theme="light"] .drop-overlay {
+  background: #141519d9;
+}
+:root[data-theme="light"] .overlay {
+  background: #0009;
+}
+:root[data-theme="light"] .voice-view {
+  background: #242933;
+}
+:root[data-theme="light"] .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-side), inset 0 0 0 3px #80848e;
+}
+:root[data-theme="light"] .main .status-dot.offline {
+  box-shadow: 0 0 0 3px var(--bg-main), inset 0 0 0 3px #80848e;
+}
