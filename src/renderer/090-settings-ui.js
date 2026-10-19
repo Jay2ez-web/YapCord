@@ -183,7 +183,7 @@ function pagePlugins(root) {
     h('h3', { class: 'ym-sec' }, 'About'),
     h('div', { class: 'ym-about' },
       h('p', {}, 'thanks for using yapcord \u2764\ufe0f'),
-      h('p', {}, 'version 1.0'),
+      h('p', {}, 'version ' + (YM.version || '1.0.3')),
       h('p', {}, YM.plugins.list().length + ' plugins')));
   draw();
   unsub.push(YM.Events.on('plugin:state', () => { if (list.isConnected && !list.querySelector(':focus')) draw(); }));
