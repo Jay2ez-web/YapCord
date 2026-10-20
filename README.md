@@ -6,6 +6,7 @@ Recovered full source for the YapCord Electron client, synchronized from the sup
 
 - Complete Electron application source under `src/`
 - All **107** renderer plugins under `src/renderer/plugins/`
+- Offline AutoCorrect for common typos, with optional user-defined correction pairs
 - Original renderer UI and themes
 - Main-process updater service (`src/main/updater.js`)
 - Trusted IPC/preload update bridge and Settings updater controls
