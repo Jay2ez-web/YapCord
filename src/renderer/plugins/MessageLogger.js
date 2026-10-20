@@ -102,6 +102,15 @@
           const a = prev.messages[channelId];
           const b = next.messages[channelId];
           if (a === b || !a || !b) continue;
+          // Incoming messages normally append without changing existing objects. Avoid allocating a full Map and Set
+          // for that hot path; the diff below is only needed for edits, removals, and non-append resyncs.
+          if (b.length > a.length) {
+            let appendOnly = true;
+            for (let i = 0; i < a.length; i++) {
+              if (a[i] !== b[i]) { appendOnly = false; break; }
+            }
+            if (appendOnly) continue;
+          }
           const before = new Map();
           for (const m of a) before.set(m.id, m);
           const stillThere = new Set();

@@ -66,7 +66,12 @@
       const s = ctx.settings.store;
       const h = YM.dom.h;
       let sidebar = null;
+      let sidebarRail = null;
       let signature = '';
+      let observedRail = null;
+      let railObserver = null;
+      let syncFrame = null;
+      let stopped = false;
 
       // ---- behaviour: clicks on the rail -----------------------------------------------------
       function onClick(ev) {
@@ -147,17 +152,19 @@
       }
 
       function sync() {
+        if (stopped) return;
         const r = rail();
         if (!r) return;
         const folders = describe();
         document.documentElement.classList.toggle('ym-bf-hide', !!s.sidebar && !s.keepIcons && folders.length > 0);
         const sig = JSON.stringify([folders, s.showFolderIcon]);
-        if (sig === signature && sidebar && sidebar.isConnected) return;
+        if (sig === signature && sidebar && sidebar.isConnected && sidebarRail === r) return;
         signature = sig;
 
         if (!folders.length) {
           if (sidebar) sidebar.remove();
           sidebar = null;
+          sidebarRail = null;
           return;
         }
         const showIcon = s.showFolderIcon === 'always' || (s.showFolderIcon === 'multiple' && folders.length > 1);
@@ -194,25 +201,56 @@
                 },
               }),
               sv.badge ? h('span', { class: 'rail-badge' }, sv.badge) : null)))));
-        if (sidebar && sidebar.isConnected) sidebar.replaceWith(fresh);
-        else r.after(fresh);
+        if (sidebar && sidebar.isConnected && sidebarRail === r) sidebar.replaceWith(fresh);
+        else {
+          if (sidebar) sidebar.remove();
+          r.after(fresh);
+        }
         sidebar = fresh;
+        sidebarRail = r;
       }
 
-      ctx.watch('nav.rail', sync);
-      ctx.onMutate((batch) => {
-        const r = rail();
-        if (!r) return;
-        // Only re-evaluate when the rail itself changed (cheap guard against unrelated chat mutations).
-        for (const rec of batch) {
-          const t = rec.target && (rec.target.nodeType === 1 ? rec.target : rec.target.parentElement);
-          if (t && (t === r || r.contains(t))) return void sync();
+      function queueSync() {
+        if (stopped || syncFrame !== null) return;
+        if (typeof requestAnimationFrame === 'function') {
+          syncFrame = requestAnimationFrame(() => { syncFrame = null; sync(); });
+        } else {
+          syncFrame = setTimeout(() => { syncFrame = null; sync(); }, 16);
         }
-      });
+      }
+
+      function observeRail(r) {
+        if (stopped || !r) return;
+        if (observedRail !== r) {
+          if (railObserver) railObserver.disconnect();
+          observedRail = r;
+          railObserver = new MutationObserver(queueSync);
+          railObserver.observe(r, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+            attributes: true,
+            attributeFilter: ['class', 'style', 'title', 'data-rail-row'],
+          });
+        }
+        sync();
+      }
+
+      ctx.watch('nav.rail', observeRail);
       ctx.cleanup(ctx.settings.onChange(() => { signature = ''; sync(); }));
       ctx.cleanup(() => {
+        stopped = true;
+        if (railObserver) railObserver.disconnect();
+        railObserver = null;
+        observedRail = null;
+        if (syncFrame !== null) {
+          if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(syncFrame);
+          else clearTimeout(syncFrame);
+        }
+        syncFrame = null;
         if (sidebar) sidebar.remove();
         sidebar = null;
+        sidebarRail = null;
         document.documentElement.classList.remove('ym-bf-hide');
       });
 

@@ -1,12 +1,20 @@
 // UserVoiceShow (port): a small speaker icon next to the name of someone who is in a voice channel right now.
 (function () {
-  function inVoice(userId) {
+  let voiceChannelByUser = new Map();
+
+  function rebuildVoiceIndex() {
     const s = YM.Store.getState();
-    if (!s || !userId) return null;
-    for (const [channelId, list] of Object.entries(s.voiceMembers || {})) {
-      if ((list || []).some((m) => m.userId === userId)) return channelId;
+    const next = new Map();
+    for (const [channelId, members] of Object.entries((s && s.voiceMembers) || {})) {
+      for (const member of members || []) {
+        if (member && member.userId && !next.has(member.userId)) next.set(member.userId, channelId);
+      }
     }
-    return null;
+    voiceChannelByUser = next;
+  }
+
+  function inVoice(userId) {
+    return userId ? voiceChannelByUser.get(userId) || null : null;
   }
 
   YM.definePlugin({
@@ -26,23 +34,36 @@
           el.removeAttribute('title');
         }
       };
-      const sync = () => {
-        document.querySelectorAll('.msg[data-message-id] .msg-author').forEach((el) => {
-          const row = el.closest('.msg');
-          const m = YM.Store.findMessage(row.getAttribute('data-message-id'));
-          mark(el, m ? inVoice(m.author_id) : null);
-        });
-        document.querySelectorAll('.chat-row[data-nav-chan]').forEach((row) => {
-          const s = YM.Store.getState();
-          const ch = s && s.channels[row.getAttribute('data-nav-chan')];
-          const other = ch && ch.kind === 'dm' && Array.isArray(ch.memberIds) ? ch.memberIds.find((id) => id !== s.userId) : null;
-          mark(row, other ? inVoice(other) : null);
-        });
+      const syncMessage = ({ el, message }) => {
+        const author = el && el.querySelector('.msg-author');
+        if (author) mark(author, message ? inVoice(message.author_id) : null);
       };
-      ctx.onMutate(sync);
-      ctx.on('store:change', (s, p) => { if (s.voiceMembers !== p.voiceMembers) sync(); });
-      sync();
-      ctx.cleanup(() => document.querySelectorAll('[data-ym-voice]').forEach((el) => { el.removeAttribute('data-ym-voice'); el.removeAttribute('title'); }));
+      const syncChatRow = (row) => {
+        const state = YM.Store.getState();
+        const channel = state && state.channels[row.getAttribute('data-nav-chan')];
+        const other = channel && channel.kind === 'dm' && Array.isArray(channel.memberIds)
+          ? channel.memberIds.find((id) => id !== state.userId)
+          : null;
+        mark(row, other ? inVoice(other) : null);
+      };
+      const syncChatRows = () => document.querySelectorAll('.chat-row[data-nav-chan]').forEach(syncChatRow);
+      const syncAll = () => {
+        rebuildVoiceIndex();
+        YM.messages.forEachVisible(syncMessage);
+        syncChatRows();
+      };
+      ctx.cleanup(YM.messages.decorate(syncMessage));
+      ctx.watch('.chat-row[data-nav-chan]', syncChatRow);
+      ctx.on('store:change', (s, p) => {
+        if (s.voiceMembers !== p.voiceMembers) syncAll();
+        else if (s.channels !== p.channels || s.activeChannelId !== p.activeChannelId) syncChatRows();
+      });
+      ctx.on('store:ready', syncAll);
+      syncAll();
+      ctx.cleanup(() => {
+        voiceChannelByUser = new Map();
+        document.querySelectorAll('[data-ym-voice]').forEach((el) => { el.removeAttribute('data-ym-voice'); el.removeAttribute('title'); });
+      });
       ctx.css(`
 .msg-author[data-ym-voice]::after,.chat-row[data-ym-voice] .name::after{content:"\\1F50A";font-size:.8em;margin-left:5px;opacity:.85}
 `);

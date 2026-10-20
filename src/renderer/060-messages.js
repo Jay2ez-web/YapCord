@@ -7,7 +7,6 @@
 // Add nodes to `body` (.msg-body); never move or remove React's own nodes.
 
 const decorators = new Set();
-const lastMessage = new WeakMap();
 const SELECTOR = '.msg[data-message-id]';
 
 function infoFor(el) {
@@ -24,7 +23,6 @@ function infoFor(el) {
 function runOn(el, only) {
   const info = infoFor(el);
   if (!info.id) return;
-  lastMessage.set(el, info.message);
   for (const fn of only ? [only] : decorators) {
     try {
       fn(info);
@@ -34,7 +32,8 @@ function runOn(el, only) {
   }
 }
 
-YM.dom.onMutate((batch) => {
+let offDomMutate = null;
+function onDomMutate(batch) {
   if (!decorators.size) return;
   const els = new Set();
   for (const rec of batch) {
@@ -48,20 +47,57 @@ YM.dom.onMutate((batch) => {
     }
   }
   els.forEach((el) => runOn(el));
-});
+}
+
+function syncDomSubscription() {
+  if (decorators.size && !offDomMutate) offDomMutate = YM.dom.onMutate(onDomMutate);
+  else if (!decorators.size && offDomMutate) {
+    offDomMutate();
+    offDomMutate = null;
+  }
+}
 
 // A message object changed in the store (edit, reaction, resolved pending, ...): re-run on affected rows.
 let rafPending = false;
+let pendingBaseMessages = null;
 YM.Events.on('store:change', (state, prev) => {
-  if (!decorators.size || state.messages === prev.messages) return;
+  if (!decorators.size || !state.messages || state.messages === prev.messages) return;
+  const previousMessages = prev.messages || {};
   if (rafPending) return;
   rafPending = true;
+  pendingBaseMessages = previousMessages;
   requestAnimationFrame(() => {
     rafPending = false;
+    const baseMessages = pendingBaseMessages;
+    pendingBaseMessages = null;
+    const current = YM.Store.getState();
+    if (!baseMessages || !current) return;
+    const nextMessages = current.messages || {};
+    const changedIds = new Set();
+    for (const channelId of Object.keys(nextMessages)) {
+      const oldList = baseMessages[channelId] || [];
+      const newList = nextMessages[channelId] || [];
+      if (!Array.isArray(oldList) || !Array.isArray(newList) || oldList === newList) continue;
+
+      // New rows are handled by the DOM observer. Skip pure appends without allocating lookup sets.
+      if (newList.length >= oldList.length) {
+        let unchangedPrefix = true;
+        for (let i = 0; i < oldList.length; i++) {
+          if (newList[i] !== oldList[i]) { unchangedPrefix = false; break; }
+        }
+        if (unchangedPrefix) continue;
+      }
+
+      const oldById = new Map();
+      for (const message of oldList) if (message && message.id != null) oldById.set(message.id, message);
+      for (const message of newList) {
+        const old = message && oldById.get(message.id);
+        if (old && old !== message) changedIds.add(message.id);
+      }
+    }
+    if (!changedIds.size) return;
     document.querySelectorAll(SELECTOR).forEach((el) => {
-      const id = el.getAttribute('data-message-id');
-      const msg = YM.Store.findMessage(id);
-      if (lastMessage.get(el) !== msg) runOn(el);
+      if (changedIds.has(el.getAttribute('data-message-id'))) runOn(el);
     });
   });
 });
@@ -70,8 +106,12 @@ YM.messages = {
   selector: SELECTOR,
   decorate(fn) {
     decorators.add(fn);
+    syncDomSubscription();
     document.querySelectorAll(SELECTOR).forEach((el) => runOn(el, fn));
-    return () => decorators.delete(fn);
+    return () => {
+      decorators.delete(fn);
+      syncDomSubscription();
+    };
   },
   /** Re-run every decorator on all visible rows (after a setting changed). */
   refresh() {

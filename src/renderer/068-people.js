@@ -33,17 +33,37 @@ people.avatarUrl = (profile) => {
   return profile && profile.avatar_path && mod ? mod.publicUrl('avatars', profile.avatar_path) || null : null;
 };
 
+const profileNameIndexes = new WeakMap();
+
+function nameIndex(profiles) {
+  let index = profileNameIndexes.get(profiles);
+  if (index) return index;
+  const username = new Map();
+  const display = new Map();
+  const add = (map, rawName, profile) => {
+    const key = String(rawName || '').trim().toLowerCase();
+    if (!key) return;
+    if (!map.has(key)) map.set(key, profile);
+    else if (map.get(key) !== profile) map.set(key, null); // ambiguous names must not resolve to a random user
+  };
+  for (const profile of Object.values(profiles)) {
+    if (!profile) continue;
+    add(username, profile.username, profile);
+    add(display, profile.display_name, profile);
+  }
+  index = { username, display };
+  profileNameIndexes.set(profiles, index);
+  return index;
+}
+
 /** Finds the profile of someone from the name on screen: username first, then display name. Null when it is not unique. */
 people.byName = (name) => {
   const s = YM.Store.getState();
-  if (!s || !name) return null;
+  if (!s || !name || !s.profiles || typeof s.profiles !== 'object') return null;
   const want = String(name).trim().replace(/^@/, '').toLowerCase();
   if (!want) return null;
-  const all = Object.values(s.profiles || {});
-  const byUser = all.filter((p) => p && String(p.username || '').toLowerCase() === want);
-  if (byUser.length === 1) return byUser[0];
-  const byDisplay = all.filter((p) => p && String(p.display_name || '').toLowerCase() === want);
-  return byDisplay.length === 1 ? byDisplay[0] : null;
+  const index = nameIndex(s.profiles);
+  return index.username.get(want) || index.display.get(want) || null;
 };
 
 /** Server the person is looking at (of the open channel), or null in a DM. */

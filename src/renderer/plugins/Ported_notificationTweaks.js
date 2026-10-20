@@ -44,25 +44,21 @@
       const seen = new Set(
         [...document.querySelectorAll(SELECTOR)].map((m) => m.dataset.messageId).filter(Boolean),
       );
-      const inspect = (root) => {
-        const rows = [];
-        if (root.matches && root.matches(SELECTOR)) rows.push(root);
-        if (root.querySelectorAll) rows.push(...root.querySelectorAll(SELECTOR));
-        for (const m of rows) {
-          const id = m.dataset.messageId;
-          if (!id || seen.has(id)) continue;
-          seen.add(id);
-          playSound();
-        }
+      while (seen.size > 5000) seen.delete(seen.values().next().value);
+      const markMessage = ({ id }) => {
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        if (seen.size > 5000) seen.delete(seen.values().next().value);
+        playSound();
       };
       const onInteract = () => unlockAudio();
       document.addEventListener('pointerdown', onInteract, { capture: true, passive: true });
       document.addEventListener('keydown', onInteract, { capture: true, passive: true });
-      const offMut = YM.dom.onMutate(inspect);
+      const offDecorate = YM.messages.decorate(markMessage);
       ctx.cleanup(() => {
         document.removeEventListener('pointerdown', onInteract, { capture: true });
         document.removeEventListener('keydown', onInteract, { capture: true });
-        try { offMut && offMut(); } catch (_) {}
+        try { offDecorate && offDecorate(); } catch (_) {}
         if (audioContext) audioContext.close().catch(() => {});
         audioContext = null;
       });

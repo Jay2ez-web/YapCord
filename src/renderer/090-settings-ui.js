@@ -369,6 +369,7 @@ async function pageUpdater(root) {
   const actions = h('div', { class: 'ym-toolbar' });
   const lastChecked = h('div', { class: 'ym-hint' }, 'Last checked: Never');
   let notifiedVersion = '';
+  let lastCheckedAt = 0;
 
   const setMessage = (text, type = 'error') => {
     message.textContent = text;
@@ -382,24 +383,31 @@ async function pageUpdater(root) {
       checking: 'Checking for updates…',
       'up-to-date': 'You are up to date.',
       available: `Update available${version}`,
-      downloading: 'Downloading update in the background…',
-      ready: `Update${version} is ready to install.`,
-      installing: 'Restarting to install update…',
+      downloading: `Downloading update${version}…`,
+      ready: `Update${version} is downloaded and verified.`,
+      installing: 'Closing YapCord to launch the installer…',
       unsupported: 'Updates are only available in the packaged Windows client.',
       idle: 'Not checked yet.',
-      error: 'Update check failed.',
+      error: 'Update operation failed.',
       unknown: 'Update status unavailable.',
     };
     status.textContent = labels[s.state] || ('Update status: ' + s.state);
     details.replaceChildren();
     actions.replaceChildren();
-    setMessage(s.state === 'error' ? (s.error || 'The update service returned an unknown error.') : '', 'error');
+    setMessage(s.error || (s.state === 'error' ? 'The update service returned an unknown error.' : ''), 'error');
     if (s.state === 'error') details.append(h('span', { class: 'ym-hint' }, 'Check your internet connection and try again.'));
-    if (s.state === 'ready') details.append(h('span', { class: 'ym-hint' }, 'The verified installer is downloaded and will replace YapCord after you restart.'));
+    if (s.state === 'downloading') {
+      const progressValue = typeof s.progress === 'number' ? Math.max(0, Math.min(100, s.progress)) : 0;
+      details.append(
+        h('progress', { class: 'ym-update-progress', max: 100, value: progressValue }),
+        h('span', { class: 'ym-hint' }, typeof s.progress === 'number' ? `${progressValue}% downloaded.` : 'Downloading installer…'));
+    }
+    if (s.state === 'ready') details.append(h('span', { class: 'ym-hint' }, 'Click “Install and restart” to close YapCord and apply the verified installer.'));
     if (s.state === 'available') actions.append(btn('Download update', async () => { try { render(await YM.native.app.downloadUpdate()); } catch (err) { render({ state: 'error', error: err.message }); } }));
     if (s.state === 'ready') actions.append(btn('Install and restart', async () => { try { await YM.native.app.installUpdate(); render({ state: 'installing' }); } catch (err) { render({ state: 'error', error: err.message }); } }));
     if (!['checking', 'downloading', 'installing'].includes(s.state)) actions.append(btn('Check for Updates', async () => { setMessage(''); try { render(await YM.native.app.checkForUpdates()); } catch (err) { render({ state: 'error', error: err.message }); } }, 'ym-btn-update'));
-    lastChecked.textContent = 'Last checked: ' + new Date().toLocaleString();
+    if (s.state === 'up-to-date' || s.state === 'available') lastCheckedAt = Date.now();
+    lastChecked.textContent = lastCheckedAt ? 'Last checked: ' + new Date(lastCheckedAt).toLocaleString() : 'Last checked: Never';
     if (s.state === 'ready' && current().notifyReady && notifiedVersion !== (s.available && s.available.version)) {
       notifiedVersion = s.available && s.available.version || 'ready';
       YM.toast('A YapCord update is ready to install.', { type: 'success' });
@@ -408,7 +416,7 @@ async function pageUpdater(root) {
 
   root.append(
     h('h2', {}, 'YapCord Updater'),
-    toggleRow('Automatically update', 'Download new versions in the background. They will be ready the next time you restart YapCord.', current().autoUpdate !== false, (v) => set('autoUpdate', v)),
+    toggleRow('Automatically update', 'Check on startup and download verified updates in the background. You choose when to install; YapCord closes when installation starts.', current().autoUpdate !== false, (v) => set('autoUpdate', v)),
     toggleRow('Get notified when an update is ready', 'Show a message when a new version has been downloaded and verified.', current().notifyReady !== false, (v) => set('notifyReady', v)),
     section('Repo',
       h('div', { class: 'ym-repo-row' },
@@ -671,6 +679,7 @@ YM.dom.css.set('settings-ui', `
   .ym-repo-row .ym-input{flex:1}
   .ym-updater-message{margin:10px 0;padding:10px 12px;border-radius:9px;font-size:12.5px;line-height:1.4}
   .ym-updater-message[hidden]{display:none}
+  .ym-update-progress{display:block;width:100%;height:8px;margin:8px 0;accent-color:#8b3dce}
   .ym-updater-message.error{background:color-mix(in srgb,#e85d8c 18%,var(--bg-elev));color:#e85d8c;border:1px solid color-mix(in srgb,#e85d8c 35%,transparent)}
   .ym-updater-message.success{background:color-mix(in srgb,#55b85a 18%,var(--bg-elev));color:#55b85a}
   .ym-btn-update{background:#8b3dce!important;color:#fff!important;border-radius:9px}

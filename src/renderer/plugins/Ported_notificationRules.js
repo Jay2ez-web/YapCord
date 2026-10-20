@@ -11,20 +11,20 @@
       keywords: { type: 'string', default: '', description: 'Comma-separated keywords to highlight' },
     },
     start(ctx) {
-      const sync = () => {
-        const keys = String(ctx.settings.store.keywords || '')
-          .split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
-        document.querySelectorAll('div.msg[data-message-id]').forEach((m) => {
-          const text = (m.innerText || '').toLowerCase();
-          m.toggleAttribute(ATTR, keys.length > 0 && keys.some((k) => text.includes(k)));
-        });
+      const parseKeywords = () => String(ctx.settings.store.keywords || '')
+        .split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+      let keys = parseKeywords();
+      const syncMessage = ({ el }) => {
+        if (!el) return;
+        const text = (el.textContent || '').toLowerCase();
+        el.toggleAttribute(ATTR, keys.length > 0 && keys.some((k) => text.includes(k)));
       };
-      sync();
-      const offMut = YM.dom.onMutate(sync);
-      const offSettings = ctx.settings.onChange(sync);
+      ctx.cleanup(YM.messages.decorate(syncMessage));
+      ctx.cleanup(ctx.settings.onChange(() => {
+        keys = parseKeywords();
+        YM.messages.forEachVisible(syncMessage);
+      }));
       ctx.cleanup(() => {
-        try { offMut && offMut(); } catch (_) {}
-        try { offSettings && offSettings(); } catch (_) {}
         document.querySelectorAll('[' + ATTR + ']').forEach((n) => n.removeAttribute(ATTR));
       });
       ctx.css(`

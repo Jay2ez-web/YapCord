@@ -2,6 +2,24 @@
 
 const STORE_NAMES = ['useStore', 'setState', 'getState', 'upsertMessages', 'removeMessage'];
 const ready = YM.deferred();
+const messageIndexes = new Map();
+const MAX_MESSAGE_INDEXES = 12;
+
+function indexMessages(channelId, list) {
+  const messages = Array.isArray(list) ? list : [];
+  const cached = messageIndexes.get(channelId);
+  if (cached && cached.list === messages && cached.length === messages.length) {
+    messageIndexes.delete(channelId);
+    messageIndexes.set(channelId, cached);
+    return cached.byId;
+  }
+  const byId = new Map();
+  for (const message of messages) if (message && message.id != null) byId.set(message.id, message);
+  messageIndexes.delete(channelId);
+  messageIndexes.set(channelId, { list: messages, length: messages.length, byId });
+  while (messageIndexes.size > MAX_MESSAGE_INDEXES) messageIndexes.delete(messageIndexes.keys().next().value);
+  return byId;
+}
 
 const Store = (YM.Store = {
   api: null,
@@ -54,14 +72,16 @@ const Store = (YM.Store = {
   findMessage(id) {
     const s = Store.getState();
     if (!s || !id) return null;
-    const active = s.messages[s.activeChannelId];
-    if (active) {
-      const m = active.find((x) => x.id === id);
+    const messages = s.messages || {};
+    const activeId = s.activeChannelId;
+    const active = messages[activeId];
+    if (Array.isArray(active)) {
+      const m = indexMessages(activeId, active).get(id);
       if (m) return m;
     }
-    for (const list of Object.values(s.messages)) {
-      if (!Array.isArray(list)) continue;
-      const m = list.find((x) => x.id === id);
+    for (const [channelId, list] of Object.entries(messages)) {
+      if (channelId === activeId || !Array.isArray(list)) continue;
+      const m = indexMessages(channelId, list).get(id);
       if (m) return m;
     }
     return (s.extraMessages && s.extraMessages[id]) || null;

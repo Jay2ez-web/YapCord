@@ -2,7 +2,7 @@
 //
 // What it does (all client-side, all safe):
 //   - reports prefers-reduced-motion: no-preference so Yapper's animation gates stay open
-//   - unpauses CSS animations/transitions that themes or reduce-motion rules freeze
+//   - unpauses active CSS animations outside settings, without forcing tiny infinite transitions
 //   - restarts videos/effects the page paused
 // What it deliberately does NOT do: rewrite image URLs. Attachment and avatar CDN URLs are often
 // signed, so touching query parameters breaks them ("Picture couldn't load"). v2 removed that.
@@ -39,13 +39,13 @@
 
   YM.definePlugin({
     name: 'AlwaysAnimate',
-    description: 'Force animated avatars, emojis and effects to play even with reduce-motion on or the window backgrounded. Never touches image URLs, so attachments keep loading.',
+    description: 'Keep active CSS animations and media playing where possible. The settings modal is excluded to prevent control flicker; image URLs are never changed.',
     authors: ['YapCord'],
     tags: ['Appearance', 'Utility'],
     enabledByDefault: false,
     options: {
       spoofReducedMotion: { type: 'boolean', default: true, description: 'Report prefers-reduced-motion: no-preference to the page' },
-      unthrottleCss: { type: 'boolean', default: true, description: 'Override animation: none / paused rules from themes and reduce-motion CSS' },
+      unthrottleCss: { type: 'boolean', default: true, description: 'Unpause active CSS animations outside settings; avoids forcing rapid UI transitions.' },
       keepVideosPlaying: { type: 'boolean', default: true, description: 'Restart videos/effects the page paused' },
     },
     start(ctx) {
@@ -70,7 +70,14 @@
           });
         } catch (_) { /* ignore */ }
       };
-      const timer = setInterval(keepPlaying, 10000);
+      const onVideoPause = (ev) => {
+        const video = ev.target;
+        if (!ctx.settings.store.keepVideosPlaying || !(video instanceof HTMLVideoElement)) return;
+        if (!video.autoplay && !video.classList.contains('msg-video')) return;
+        if (video.play) video.play().catch(() => undefined);
+      };
+      document.addEventListener('pause', onVideoPause, true);
+      const offVideoSettings = ctx.settings.onChange(keepPlaying);
       // A returning tab is the main moment the page pauses media: catch it immediately.
       const onVis = () => { if (!document.hidden) keepPlaying(); };
       document.addEventListener('visibilitychange', onVis);
@@ -80,10 +87,11 @@
       const offCss = ctx.settings.onChange(syncCss);
 
       ctx.cleanup(() => {
-        clearInterval(timer);
+        document.removeEventListener('pause', onVideoPause, true);
         document.removeEventListener('visibilitychange', onVis);
         try { offSettings && offSettings(); } catch (_) {}
         try { offCss && offCss(); } catch (_) {}
+        try { offVideoSettings && offVideoSettings(); } catch (_) {}
         if (origMatchMedia && window.matchMedia && window.matchMedia.__ymAlwaysAnimate) {
           window.matchMedia = origMatchMedia;
         }
@@ -91,18 +99,13 @@
       });
 
       ctx.css(`
-/* AlwaysAnimate: undo reduce-motion / theme freezes. Images and layout untouched. */
-html[data-ym-always-animate] *, html[data-ym-always-animate] *::before, html[data-ym-always-animate] *::after {
+/* Do not override the React settings modal: forced micro-animations there can trigger layout feedback. */
+html[data-ym-always-animate] body :not(.settings):not(.settings *),
+html[data-ym-always-animate] body :not(.settings):not(.settings *)::before,
+html[data-ym-always-animate] body :not(.settings):not(.settings *)::after {
   animation-play-state: running !important;
 }
-html[data-ym-always-animate] .typing-dots i { animation: revert !important; opacity: 1; }
-@media (prefers-reduced-motion: reduce) {
-  html[data-ym-always-animate] *, html[data-ym-always-animate] *::before, html[data-ym-always-animate] *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: infinite !important;
-    transition-duration: 0.01ms !important;
-  }
-}
+html[data-ym-always-animate] body :not(.settings):not(.settings *) .typing-dots i { animation: revert !important; opacity: 1; }
 `);
       keepPlaying();
     },

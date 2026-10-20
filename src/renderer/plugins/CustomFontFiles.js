@@ -8,7 +8,19 @@
   const DB_NAME = 'yapcord-fonts';
   const DB_STORE = 'fonts';
   const FAMILY_PREFIX = 'YM-Custom-';
+  const MAX_FONT_BYTES = 50 * 1024 * 1024;
   const apiHolder = { api: null };
+
+  function asFontBlob(file) {
+    if (file instanceof Blob) return file;
+    if (!file || typeof file !== 'object') return null;
+    const data = file.data !== undefined ? file.data : file.blob;
+    if (data instanceof Blob) return data;
+    if (data instanceof ArrayBuffer || ArrayBuffer.isView(data) || Array.isArray(data)) {
+      return new Blob([data], { type: file.type || 'application/octet-stream' });
+    }
+    return null;
+  }
 
   function openDb() {
     return new Promise((resolve, reject) => {
@@ -53,7 +65,18 @@
       try {
         const t = db.transaction(DB_STORE, 'readonly');
         const req = t.objectStore(DB_STORE).getAll();
-        req.onsuccess = () => { db.close(); resolve(req.result || []); };
+        req.onsuccess = () => {
+          const records = req.result || [];
+          db.close();
+          Promise.all(records.map(async (record) => {
+            if (record.blob instanceof Blob) return record;
+            const blob = asFontBlob(record.blob);
+            if (!blob) return record;
+            const repaired = { ...record, blob };
+            try { await putFont(repaired); } catch (_) { /* the in-memory repair is still usable */ }
+            return repaired;
+          })).then(resolve, reject);
+        };
         req.onerror = () => { db.close(); reject(req.error); };
       } catch (err) {
         try { db.close(); } catch (_) {}
@@ -102,7 +125,7 @@
 
   YM.definePlugin({
     name: 'CustomFontFiles',
-    description: 'Import .ttf/.otf/.woff/.woff2 files from disk and use them as Yapper\u2019s font. Stored in IndexedDB, applied on launch.',
+    description: 'Choose a .ttf/.otf/.woff/.woff2 file directly; the family name is inferred automatically. Stored in IndexedDB and applied on launch.',
     authors: ['YapCord'],
     tags: ['Appearance'],
     enabledByDefault: false,
@@ -146,7 +169,7 @@
                     await api.apply();
                     paint();
                   },
-                }, store.enabledFontId === f.id ? 'Using ✓' : 'Use'),
+                }, isActive ? 'Using ✓' : 'Use'),
                 h('button', {
                   class: 'ym-link ym-danger', type: 'button', title: 'Delete this font',
                   onClick: async () => {
@@ -172,28 +195,38 @@
       const api = {
         async importFiles() {
           let files = null;
-          try {
-            if (YM.native.files && YM.native.files.pick) {
-              const picked = await YM.native.files.pick({ accept: '.ttf,.otf,.woff,.woff2,font/*', multiple: true });
-              if (picked && picked.length) files = picked;
+          const nativePicker = YM.native.files && typeof YM.native.files.pick === 'function';
+          if (nativePicker) {
+            try {
+              files = await YM.native.files.pick({ accept: '.ttf,.otf,.woff,.woff2,font/*', multiple: true });
+            } catch (_) {
+              files = await pickFromDisk();
             }
-          } catch (_) { /* fall through to file input */ }
-          if (!files) files = await pickFromDisk();
+            if (!files || !files.length) return; // a native-dialog cancel must not open a second dialog
+          } else {
+            files = await pickFromDisk();
+          }
           if (!files || !files.length) return;
           let added = 0;
+          let skipped = 0;
           for (const file of files) {
-            if (!/\.(ttf|otf|woff2?)$/i.test(file.name || '')) continue;
+            if (!file || file.error || !/\.(ttf|otf|woff2?)$/i.test(file.name || '')) { skipped++; continue; }
+            const blob = asFontBlob(file);
+            if (!blob || !blob.size || blob.size > MAX_FONT_BYTES) { skipped++; continue; }
             await putFont({
               id: 'font_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7),
               name: file.name,
               family: baseFamily(file.name),
-              format: guessFormat(file.name, file.type),
-              blob: file,
+              format: guessFormat(file.name, blob.type || file.type),
+              blob,
               addedAt: Date.now(),
             });
             added++;
           }
-          YM.toast(added ? `Imported ${added} font${added === 1 ? '' : 's'}` : 'No font files selected', { type: added ? 'success' : 'error' });
+          const message = added
+            ? `Imported ${added} font${added === 1 ? '' : 's'}${skipped ? `; skipped ${skipped} unsupported or oversized file${skipped === 1 ? '' : 's'}` : ''}`
+            : 'No usable font files selected (font files must be 50 MB or smaller).';
+          YM.toast(message, { type: added ? 'success' : 'error' });
           await api.apply();
           YM.Events.emit('ym:fonts-changed');
         },

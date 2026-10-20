@@ -1,6 +1,6 @@
 'use strict';
 const path = require('path');
-const { app, BrowserWindow, Menu, Tray, nativeImage, session, shell } = require('electron');
+const { app, BrowserWindow, Menu, Tray, nativeImage, session, shell, net } = require('electron');
 
 const C = require('./constants');
 const log = require('./log');
@@ -35,7 +35,13 @@ function main() {
   const settings = new SettingsStore(path.join(dataDir, 'settings'));
   settings.load();
   const themes = new ThemeManager(path.join(dataDir, 'themes'));
-  const updater = new Updater({ currentVersion: YAPCORD_VERSION, dataDir, log });
+  const updater = new Updater({
+    currentVersion: YAPCORD_VERSION,
+    dataDir,
+    log,
+    fetch: net.fetch.bind(net),
+    quit: () => app.quit(),
+  });
   const netfilter = new NetFilter();
   // The CustomIcons plugin: your own app / tray icon (only used while that plugin is on).
   const appIcon = new AppIcon({

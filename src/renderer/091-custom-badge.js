@@ -7,7 +7,7 @@
     'e46be3da-39b3-4a1a-b003-042d27d71e9d',
     'fc529a6a-ddbd-445b-8bce-18a13acca5d0',
   ]);
-  const NAME_SELECTORS = '.msg-author, .voice-person .name, .chat-row .name, .pc2-head';
+  const NON_MESSAGE_NAMES = '.voice-person .name, .chat-row .name, .pc2-head';
   const MSG_AUTHOR = ':scope > .msg-body > .msg-head > .msg-author:not(.webhook-author)';
 
   function addBadge(nameEl) {
@@ -26,46 +26,49 @@
       || '';
   }
 
-  function decorateRoot(root) {
-    if (!root || !root.querySelectorAll) return;
-    const candidates = root.matches && root.matches(NAME_SELECTORS) ? [root] : [];
-    root.querySelectorAll(NAME_SELECTORS).forEach((el) => candidates.push(el));
-    for (const nameEl of candidates) {
-      const id = userIdFor(nameEl);
-      if (BADGED.has(id)) addBadge(nameEl);
-      else nameEl.querySelectorAll(':scope > .' + BADGE_CLASS).forEach((el) => el.remove());
-    }
+  function syncName(nameEl, id = userIdFor(nameEl)) {
+    if (!nameEl) return;
+    if (BADGED.has(String(id))) addBadge(nameEl);
+    else nameEl.querySelectorAll(':scope > .' + BADGE_CLASS).forEach((el) => el.remove());
+  }
+
+  function decorateMessage({ el, message }) {
+    const nameEl = el && el.querySelector(MSG_AUTHOR);
+    if (!nameEl) return;
+    const id = message && (message.author_id || message.authorId) || userIdFor(nameEl);
+    syncName(nameEl, id);
+  }
+
+  function syncNonMessageNames() {
+    document.querySelectorAll(NON_MESSAGE_NAMES).forEach((el) => syncName(el));
   }
 
   function start() {
-    const offDecorate = YM.messages.decorate(({ el, message }) => {
-      try {
-        const id = message && (message.author_id || message.authorId);
-        const nameEl = el && el.querySelector(MSG_AUTHOR);
-        if (!nameEl) return;
-        if (BADGED.has(String(id))) addBadge(nameEl);
-        else nameEl.querySelectorAll(':scope > .' + BADGE_CLASS).forEach((node) => node.remove());
-      } catch (_) { /* ignore individual rows */ }
+    let syncFrame = null;
+    const queueNonMessageSync = () => {
+      if (syncFrame !== null) return;
+      syncFrame = requestAnimationFrame(() => {
+        syncFrame = null;
+        syncNonMessageNames();
+      });
+    };
+    const offDecorate = YM.messages.decorate(decorateMessage);
+    const offUserNames = YM.dom.watch(NON_MESSAGE_NAMES, syncName);
+    const offStore = YM.Events.on('store:change', (next, prev) => {
+      if (next.profiles !== prev.profiles || next.voiceMembers !== prev.voiceMembers || next.channels !== prev.channels || next.activeChannelId !== prev.activeChannelId) {
+        queueNonMessageSync();
+      }
     });
-
-    let queued = false;
-    const sweep = () => {
-      queued = false;
-      try { decorateRoot(document); } catch (_) { /* ignore */ }
-    };
-    const queue = () => {
-      if (queued) return;
-      queued = true;
-      requestAnimationFrame(sweep);
-    };
-    const offMutate = YM.dom.onMutate(queue);
-    const safety = setInterval(sweep, 10000);
-    queue();
+    const offStoreReady = YM.Events.on('store:ready', () => YM.messages.forEachVisible(decorateMessage));
+    syncNonMessageNames();
+    YM.messages.forEachVisible(decorateMessage);
 
     return () => {
-      clearInterval(safety);
+      if (syncFrame !== null) cancelAnimationFrame(syncFrame);
       try { offDecorate && offDecorate(); } catch (_) {}
-      try { offMutate && offMutate(); } catch (_) {}
+      try { offUserNames && offUserNames(); } catch (_) {}
+      try { offStore && offStore(); } catch (_) {}
+      try { offStoreReady && offStoreReady(); } catch (_) {}
       document.querySelectorAll('.' + BADGE_CLASS).forEach((el) => el.remove());
     };
   }

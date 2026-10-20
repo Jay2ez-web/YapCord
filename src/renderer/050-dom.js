@@ -85,6 +85,31 @@ const mutateListeners = new Set();
 let scheduled = false;
 let pending = [];
 let observer = null;
+let frameId = null;
+let fallbackTimer = null;
+let pendingStart = null;
+
+function hasConsumers() {
+  return watchers.size > 0 || mutateListeners.size > 0;
+}
+
+function stopObserverIfIdle() {
+  if (hasConsumers()) return;
+  if (observer) {
+    observer.disconnect();
+    observer = null;
+  }
+  if (pendingStart) {
+    document.removeEventListener('DOMContentLoaded', pendingStart);
+    pendingStart = null;
+  }
+  if (frameId !== null) cancelAnimationFrame(frameId);
+  if (fallbackTimer !== null) clearTimeout(fallbackTimer);
+  frameId = null;
+  fallbackTimer = null;
+  scheduled = false;
+  pending = [];
+}
 
 function matchesDeep(node, selector, cb) {
   if (node.nodeType !== 1) return;
@@ -94,9 +119,18 @@ function matchesDeep(node, selector, cb) {
 }
 
 function flush() {
+  if (!scheduled) return;
   scheduled = false;
+  if (frameId !== null) cancelAnimationFrame(frameId);
+  if (fallbackTimer !== null) clearTimeout(fallbackTimer);
+  frameId = null;
+  fallbackTimer = null;
   const batch = pending;
   pending = [];
+  if (!hasConsumers()) {
+    stopObserverIfIdle();
+    return;
+  }
   for (const w of watchers) {
     for (const rec of batch) {
       for (const n of rec.addedNodes) {
@@ -124,23 +158,38 @@ function flush() {
 function ensureObserver() {
   if (observer) return;
   observer = new MutationObserver((records) => {
+    if (!hasConsumers()) {
+      stopObserverIfIdle();
+      return;
+    }
     // A loop instead of push(...records): a huge batch (a channel with thousands of messages) would overflow the stack.
     for (let i = 0; i < records.length; i++) pending.push(records[i]);
     if (!scheduled) {
       scheduled = true;
-      requestAnimationFrame(flush);
+      if (typeof requestAnimationFrame === 'function') frameId = requestAnimationFrame(flush);
+      // requestAnimationFrame can be heavily throttled in a hidden window; bound queued records there.
+      fallbackTimer = setTimeout(flush, document.hidden ? 250 : 1000);
     }
   });
-  const start = () => observer.observe(document.documentElement, { childList: true, subtree: true });
+  const start = () => {
+    pendingStart = null;
+    if (!observer || !hasConsumers() || !document.documentElement) return;
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  };
   if (document.documentElement) start();
-  else document.addEventListener('DOMContentLoaded', start, { once: true });
+  else {
+    pendingStart = start;
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  }
 }
 
 dom.watch = function watch(selector, fn) {
-  ensureObserver();
   const w = { selector, fn, seen: new WeakSet() };
+  let active = true;
   watchers.add(w);
+  ensureObserver();
   const scan = () => document.querySelectorAll(selector).forEach((el) => {
+    if (!active) return;
     if (w.seen.has(el)) return;
     w.seen.add(el);
     try {
@@ -151,13 +200,20 @@ dom.watch = function watch(selector, fn) {
   });
   if (document.body) scan();
   else YM.domReady.then(scan);
-  return () => watchers.delete(w);
+  return () => {
+    active = false;
+    watchers.delete(w);
+    stopObserverIfIdle();
+  };
 };
 
 dom.onMutate = function onMutate(fn) {
-  ensureObserver();
   mutateListeners.add(fn);
-  return () => mutateListeners.delete(fn);
+  ensureObserver();
+  return () => {
+    mutateListeners.delete(fn);
+    stopObserverIfIdle();
+  };
 };
 
 /** Resolve with the first element matching selector (or null after timeout ms). */
