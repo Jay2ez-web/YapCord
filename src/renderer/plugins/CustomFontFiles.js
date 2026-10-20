@@ -209,23 +209,27 @@
           if (!files || !files.length) return;
           let added = 0;
           let skipped = 0;
+          let lastAddedId = '';
           for (const file of files) {
             if (!file || file.error || !/\.(ttf|otf|woff2?)$/i.test(file.name || '')) { skipped++; continue; }
             const blob = asFontBlob(file);
             if (!blob || !blob.size || blob.size > MAX_FONT_BYTES) { skipped++; continue; }
-            await putFont({
+            const record = {
               id: 'font_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7),
               name: file.name,
               family: baseFamily(file.name),
               format: guessFormat(file.name, blob.type || file.type),
               blob,
               addedAt: Date.now(),
-            });
+            };
+            await putFont(record);
+            lastAddedId = record.id;
             added++;
           }
           const message = added
             ? `Imported ${added} font${added === 1 ? '' : 's'}${skipped ? `; skipped ${skipped} unsupported or oversized file${skipped === 1 ? '' : 's'}` : ''}`
             : 'No usable font files selected (font files must be 50 MB or smaller).';
+          if (lastAddedId) ctx.settings.set('enabledFontId', lastAddedId);
           YM.toast(message, { type: added ? 'success' : 'error' });
           await api.apply();
           YM.Events.emit('ym:fonts-changed');

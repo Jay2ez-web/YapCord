@@ -10,7 +10,7 @@ usage() {
 [[ $# -ge 1 && $# -le 2 ]] || usage
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE="$(realpath -- "$1")"
-OUTPUT="${2:-$ROOT/YapCord 1.0.exe}"
+OUTPUT="${2:-$ROOT/YapCord1.0.exe}"
 ASAR="${ASAR_CLI:-$ROOT/node_modules/.bin/asar}"
 
 for tool in 7z makensis; do
@@ -46,7 +46,13 @@ cp "$ROOT/build/icon.png" "$APP/build/icon.png"
 # Confirm the packaged app archive contains the current source, not the source from the base installer.
 for file in \
   package.json \
+  src/main/index.js \
+  src/main/inject.js \
   src/main/updater.js \
+  src/main/update-protocol.js \
+  src/main/update-public.pem \
+  src/main/datadir.js \
+  src/renderer/090-settings-ui.js \
   src/renderer/060-messages.js \
   src/renderer/091-custom-badge.js \
   src/renderer/plugins/AlwaysAnimate.js \

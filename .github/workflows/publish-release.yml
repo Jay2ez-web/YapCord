@@ -1,0 +1,71 @@
+name: Publish verified YapCord release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of the signed draft release, for example v1.0.8
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-yapcord-${{ github.event.inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  verify-and-publish:
+    if: github.repository == 'Jay2ez-web/YapCord' && github.ref == 'refs/heads/main'
+    environment: update-signing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out trusted default-branch verifier
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Verify all draft assets before publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Stable update tags must use vMAJOR.MINOR.PATCH." >&2
+            exit 1
+          fi
+          is_draft=$(gh release view "$TAG_NAME" --repo "$GH_REPO" --json isDraft --jq '.isDraft')
+          is_prerelease=$(gh release view "$TAG_NAME" --repo "$GH_REPO" --json isPrerelease --jq '.isPrerelease')
+          if [[ "$is_draft" != "true" || "$is_prerelease" != "false" ]]; then
+            echo "Refusing to publish: the release must be a stable draft." >&2
+            exit 1
+          fi
+          release_dir="$RUNNER_TEMP/yapcord-release"
+          mkdir -p "$release_dir"
+          gh release download "$TAG_NAME" --repo "$GH_REPO" \
+            --pattern "YapCord1.0.exe" --pattern "update.json" \
+            --pattern "update.json.sig" --dir "$release_dir"
+          node tools/verify-update-manifest.js \
+            "$release_dir/YapCord1.0.exe" "$release_dir/update.json" \
+            "$release_dir/update.json.sig" "$TAG_NAME" stable
+          is_draft=$(gh release view "$TAG_NAME" --repo "$GH_REPO" --json isDraft --jq '.isDraft')
+          if [[ "$is_draft" != "true" ]]; then
+            echo "Refusing to publish: the release is no longer a draft." >&2
+            exit 1
+          fi
+          release_id=$(gh release view "$TAG_NAME" --repo "$GH_REPO" --json databaseId --jq '.databaseId')
+          gh api --method PATCH "repos/${GH_REPO}/releases/${release_id}" -F draft=false >/dev/null
+          is_draft=$(gh release view "$TAG_NAME" --repo "$GH_REPO" --json isDraft --jq '.isDraft')
+          if [[ "$is_draft" != "false" ]]; then
+            echo "GitHub did not confirm the release publication." >&2
+            exit 1
+          fi
+          echo "Published verified YapCord update $TAG_NAME."

@@ -20,8 +20,7 @@ const YAPCORD_VERSION = require('../../package.json').version;
 app.setName('YapCord');
 if (process.platform === 'win32') app.setAppUserModelId('dev.yapcord.app');
 // %APPDATA%\YapCord (moved over from the old %APPDATA%\YapperMod folder on the first start).
-const dataLocation = resolveDataDir(app.getPath('appData'));
-const dataDir = dataLocation.dir;
+const dataDir = resolveDataDir(app.getPath('appData')).dir;
 app.setPath('userData', dataDir);
 
 if (!app.requestSingleInstanceLock()) {
@@ -333,9 +332,6 @@ function main() {
   app.whenReady().then(() => {
     log.init(path.join(dataDir, 'logs'));
     log.info('YapCord ' + app.getVersion() + ' starting (electron ' + process.versions.electron + ')');
-    if (dataLocation.migrated) log.info('moved the data folder from YapperMod to YapCord');
-    if (dataLocation.legacy) log.warn('could not move the old YapperMod data folder (is the old app still running?), using it as it is:', dataLocation.error && dataLocation.error.message);
-
     themes.ensureDir(C.BUNDLED_THEMES_DIR);
     setupSession(session.defaultSession);
     registerIpc({ getWindow, getWindows, isTrustedWindow, settings, themes, netfilter, dataDir, applyWindowSettings, appIcon, updater });

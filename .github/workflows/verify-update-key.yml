@@ -1,0 +1,28 @@
+name: Verify YapCord update-signing key
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    if: github.repository == 'Jay2ez-web/YapCord' && github.ref == 'refs/heads/main'
+    environment: update-signing
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out trusted key verifier
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Verify without displaying the secret
+        env:
+          YAPCORD_UPDATE_SIGNING_KEY: ${{ secrets.YAPCORD_UPDATE_SIGNING_KEY }}
+        run: node tools/verify-update-signing-key.js

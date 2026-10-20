@@ -422,7 +422,7 @@ async function pageUpdater(root) {
       h('div', { class: 'ym-repo-row' },
         h('input', { class: 'ym-input', value: 'Jay2ez-web/YapCord', readOnly: true, spellcheck: 'false' }),
         btn('Open on GitHub', () => YM.native.openExternal('https://github.com/Jay2ez-web/YapCord'), 'ym-btn-ghost')),
-      h('p', { class: 'hint' }, `The GitHub repository YapCord updates from. You have version ${YM.version || '1.0.0'}. Only releases with a higher version number are accepted.`)),
+      h('p', { class: 'hint' }, `The GitHub repository YapCord updates from. You have version ${YM.version || '1.0.0'}. Only newer stable releases with a valid YapCord signature and installer hash are accepted.`)),
     section('Updates', status, details, message, actions, lastChecked),
   );
   YM.native.app.updateStatus().then(render).catch((err) => render({ state: 'error', error: err.message }));
@@ -437,7 +437,7 @@ async function pageApp(root) {
     root.append(
       h('h2', {}, 'App'),
       h('p', {}, 'YapCord is running inside the official Yapper app, so there is just one app and you stay logged in.'),
-      h('p', { class: 'hint' }, 'Window, tray icon, "Start with Windows", updates and the screen picker are handled by Yapper itself. Your YapCord settings and themes are stored in the YapCord folder and shared with the stand-alone YapCord app.'),
+      h('p', { class: 'hint' }, 'Window, tray icon, "Start with Windows", updates and the screen picker are handled by Yapper itself. This integrated mode keeps its own YapCord profile; it does not share the separate YapCord 1.0 installer profile.'),
       h('p', { class: 'hint' }, 'After a Yapper update YapCord can be gone from the app. Run Install-in-Yapper.bat again to put it back.'),
       h('div', { class: 'ym-toolbar', style: { marginTop: '14px' } },
         btn('Reload', () => YM.native.app.reload()), btn('DevTools', () => YM.native.app.devtools(), 'ym-btn-ghost'),

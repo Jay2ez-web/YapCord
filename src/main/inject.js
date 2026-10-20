@@ -7,7 +7,7 @@
 //   - registers YapCord's preload for Yapper's pages (it exposes window.YapperNative and puts the plugin runtime in the page),
 //   - answers the runtime's IPC calls (settings, themes, file dialog ...), and
 //   - adds the right-click menu and the tracker filter.
-// Settings, themes and logs live in %APPDATA%\YapCord, shared with the stand-alone YapCord app.
+// Integrated mode retains its own %APPDATA%\YapCord profile; the standalone 1.0 installer uses %APPDATA%\YapCord1.0.
 const fs = require('fs');
 const path = require('path');
 const { app, session, shell, nativeImage, net } = require('electron');
@@ -19,7 +19,6 @@ const { ThemeManager } = require('./themes');
 const { NetFilter } = require('./netfilter');
 const { registerIpc } = require('./ipc');
 const { attachContextMenu } = require('./contextmenu');
-const { resolveDataDir } = require('./datadir');
 const { AppIcon } = require('./appicon');
 const { installTrayPatch } = require('./trayicon');
 
@@ -37,8 +36,7 @@ function addPreload(ses, file) {
 }
 
 function install() {
-  const dataLocation = resolveDataDir(app.getPath('appData'));
-  const dataDir = dataLocation.dir;
+  const dataDir = path.join(app.getPath('appData'), 'YapCord');
   const settings = new SettingsStore(path.join(dataDir, 'settings'));
   settings.load();
   const themes = new ThemeManager(path.join(dataDir, 'themes'));

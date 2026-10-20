@@ -1,48 +1,35 @@
 # YapCord
 
-Recovered full source for the YapCord Electron client, synchronized from the supplied installer and extended with a staged Windows auto-updater.
+YapCord is a desktop client built on Yapper. The standalone Windows app is branded **YapCord** and installed as **YapCord 1.0**.
 
-## Included
+## Profiles and included features
 
-- Complete Electron application source under `src/`
-- All **107** renderer plugins under `src/renderer/plugins/`
-- Offline AutoCorrect for common typos, with optional user-defined correction pairs
-- Original renderer UI and themes
-- Main-process updater service (`src/main/updater.js`)
-- Trusted IPC/preload update bridge and Settings updater controls
-- Release manifest helper in `tools/make-update-manifest.py`
+The standalone installer keeps settings, themes, logs, and the login session in `%APPDATA%\YapCord1.0`. The optional in-Yapper integration keeps its separate profile in `%APPDATA%\YapCord`. The standalone installer does not migrate, read, or remove the regular YapCord/Yapper profile.
 
-The updater checks the published `latest.json` release manifest, downloads the installer to a staging directory, verifies its SHA-512 digest, and offers a restart/install action. It does not execute an unverified download. Update checks run only in packaged Windows builds; browser/source development mode uses the fallback bridge.
+The source includes the Electron app, multiple native windows, 107 renderer plugins, offline opt-in AutoCorrect with local custom typo pairs, local diagnostics, the NSIS installer, and the Windows updater. The updater accepts only published stable releases whose Ed25519-signed manifest matches the app, version, tag, channel, installer name, size, and SHA-256 digest. It downloads in the background when enabled, but only installs after the user chooses **Install and restart**.
 
-## Build and publish
+## Build the Windows installer
 
-### Build the Windows setup EXE
+The helper reuses the supplied Windows/Electron runtime, replaces its app archive with the current source, and wraps that staged payload in the NSIS installer. It does not execute or modify the supplied base installer.
 
-The repository includes a portable NSIS setup script and a build helper. The helper uses a supplied YapCord Windows installer as the Electron runtime base, then replaces its `app.asar` with the current `package.json`, `src/`, `themes/`, and app icon from this checkout. It does not run or modify the supplied base installer.
-
-Run from a Linux/WSL shell with Node.js/npm, 7-Zip (`7z`), and NSIS (`makensis`), from the repository root:
+On Linux/WSL with Node.js/npm, 7-Zip (`7z`), and NSIS (`makensis`):
 
 ```bash
 npm ci
-npm run build:win-installer -- /path/to/YapCord1.07.exe
+npm run build:win-installer -- /path/to/YapCord-base-installer.exe
 ```
 
-The output is `YapCord 1.0.exe` in the repository root by default. Pass a second path to choose another output location. The produced setup is unsigned unless you sign it separately; Windows may display a security warning.
+The default output is `YapCord1.0.exe` in the repository root. You can pass a second output path. The installer is not Authenticode-signed, so Windows may show a publisher warning. The updater uses the installer’s silent `/S` mode.
 
-### Release updates
+## First signed stable release
 
-Generate the update manifest beside the published installer:
+Use a stable version greater than the running app version. The version must match `package.json`, the Git tag, and the signed manifest.
 
-```bash
-python tools/make-update-manifest.py YapCord1.0-auto-update.exe --version 1.0.0 --url https://github.com/Jay2ez-web/YapCord/releases/download/v1.0.0/YapCord1.0-auto-update.exe
-```
+1. Build and test `YapCord1.0.exe`.
+2. Push the matching `vMAJOR.MINOR.PATCH` tag. The tag workflow creates a draft only.
+3. Upload the installer to the draft with the exact asset name `YapCord1.0.exe`.
+4. Run **Verify YapCord update-signing key** from `main`. It checks the `update-signing` environment-scoped secret without printing it.
+5. Run **Sign YapCord update manifest** from `main` with the draft tag. This rejects non-draft releases and pre-existing signed assets, signs the manifest, and verifies the assets again after downloading them from GitHub.
+6. Review `YapCord1.0.exe`, `update.json`, and `update.json.sig` in the draft. Then run **Publish verified YapCord release** with the same tag. That separate workflow verifies the files again before publication.
 
-Publish the installer and `latest.json` as assets of the same GitHub release. For production distribution, sign the installer and keep the version consistent in `package.json`, the release tag, and the manifest.
-
-## Plugin count
-
-The recovered installer contains **107 plugin files**. The canonical source tree is `src/`; the older compatibility directories in this repository are retained only for historical/reference purposes.
-
-## Safety
-
-The updater validates HTTPS, the release version, the download size, and the SHA-512 digest before offering installation. Review release assets and sign production installers before distributing them.
+The private key belongs only in the GitHub Actions environment; the app contains only the public verification key. That environment currently has no required-reviewer rule. If signing should require an additional approval, configure required reviewers in GitHub before using it. After a release is public, publish a new higher version rather than replacing signed assets.

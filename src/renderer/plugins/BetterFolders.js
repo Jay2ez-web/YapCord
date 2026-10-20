@@ -18,6 +18,7 @@
 
   let internalClick = false;
   function click(el) {
+    if (!el || !el.isConnected) return;
     internalClick = true;
     try {
       el.click();
@@ -72,6 +73,15 @@
       let railObserver = null;
       let syncFrame = null;
       let stopped = false;
+      const timers = new Set();
+      const later = (fn, delay) => {
+        const timer = setTimeout(() => {
+          timers.delete(timer);
+          if (!stopped) fn();
+        }, delay);
+        timers.add(timer);
+        return timer;
+      };
 
       // ---- behaviour: clicks on the rail -----------------------------------------------------
       function onClick(ev) {
@@ -86,7 +96,7 @@
           if (s.closeOthers && !btn.classList.contains('open')) {
             const row = btn.closest('[data-rail-row]');
             const keep = row ? row.dataset.railRow : null;
-            setTimeout(() => closeFolders(keep), 60);
+            later(() => closeFolders(keep), 60);
           }
           return;
         }
@@ -101,7 +111,7 @@
         const id = next.activeServerId;
         if (!id) return;
         const folder = YM.folders.folderOfServer(id);
-        setTimeout(() => {
+        later(() => {
           const r = rail();
           if (!r) return;
           if (folder) {
@@ -240,6 +250,8 @@
       ctx.cleanup(ctx.settings.onChange(() => { signature = ''; sync(); }));
       ctx.cleanup(() => {
         stopped = true;
+        timers.forEach(clearTimeout);
+        timers.clear();
         if (railObserver) railObserver.disconnect();
         railObserver = null;
         observedRail = null;

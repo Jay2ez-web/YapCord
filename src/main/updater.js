@@ -8,102 +8,127 @@ const { EventEmitter } = require('events');
 const { spawn: spawnProcess } = require('child_process');
 const { Readable, Transform } = require('stream');
 const { pipeline } = require('stream/promises');
+const { INSTALLER_NAME, MAX_INSTALLER_BYTES, parseTag, parseAppVersion, compareVersions, verifyManifest } = require('./update-protocol');
 
 const REPOSITORY = 'Jay2ez-web/YapCord';
-const RELEASES_API = `https://api.github.com/repos/${REPOSITORY}/releases/latest`;
-const MANIFEST_URL = `https://raw.githubusercontent.com/${REPOSITORY}/main/latest.json`;
-const MAX_INSTALLER_BYTES = 500 * 1024 * 1024;
-const DOWNLOAD_HOSTS = new Set([
-  'files.manuscdn.com',
+const RELEASES_API = `https://api.github.com/repos/${REPOSITORY}/releases?per_page=100`;
+const PUBLIC_KEY = fs.readFileSync(path.join(__dirname, 'update-public.pem'), 'utf8');
+const ALLOWED_HOSTS = new Set([
+  'api.github.com',
   'github.com',
+  'release-assets.githubusercontent.com',
+  'objects.githubusercontent.com',
+  'github-releases.githubusercontent.com',
 ]);
+const MAX_FEED_BYTES = 8 * 1024 * 1024;
 
-function compareVersions(a, b) {
-  const parse = (value) => {
-    const match = String(value || '').trim().replace(/^v/i, '').match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
-    return match ? match.slice(1).map((n) => Number(n || 0)) : [0, 0, 0];
-  };
-  const av = parse(a);
-  const bv = parse(b);
-  for (let i = 0; i < 3; i++) {
-    if (av[i] !== bv[i]) return av[i] > bv[i] ? 1 : -1;
-  }
-  return 0;
-}
-
-function safeDownloadUrl(value) {
+function safeUrl(raw) {
   let url;
-  try {
-    url = new URL(String(value));
-  } catch (_) {
-    throw new Error('The update URL is invalid.');
-  }
-  const host = url.hostname.toLowerCase();
-  const isGitHubAsset = host === 'github.com' || host.endsWith('.githubusercontent.com');
-  if (url.protocol !== 'https:' || url.username || url.password || (!DOWNLOAD_HOSTS.has(host) && !isGitHubAsset)) {
-    throw new Error('The update URL must use an approved HTTPS host.');
+  try { url = new URL(String(raw)); } catch (_) { throw new Error('The update server returned an invalid URL.'); }
+  if (url.protocol !== 'https:' || url.username || url.password || !ALLOWED_HOSTS.has(url.hostname.toLowerCase()) || (url.port && url.port !== '443')) {
+    throw new Error('The update server returned an untrusted HTTPS URL.');
   }
   return url;
 }
 
-function requestSignal(timeoutMs) {
-  return typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
-    ? AbortSignal.timeout(timeoutMs)
-    : undefined;
+function trustedReleaseAssetUrl(raw, tag, name) {
+  const url = safeUrl(raw);
+  const expectedPath = `/Jay2ez-web/YapCord/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(name)}`;
+  if (url.hostname !== 'github.com' || url.pathname !== expectedPath || url.search || url.hash) {
+    throw new Error('A release asset URL does not match this YapCord release.');
+  }
+  return url.href;
 }
 
-async function fetchJson(fetchImpl, url) {
+async function fetchResponse(fetchImpl, raw, accept, timeoutMs = 30000) {
   if (typeof fetchImpl !== 'function') throw new Error('The update network service is unavailable.');
-  const response = await fetchImpl(url, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'User-Agent': 'YapCord-updater',
-    },
-    signal: requestSignal(30000),
-  });
-  if (!response.ok) throw new Error(`Update check failed with HTTP ${response.status}.`);
-  return response.json();
+  let url = safeUrl(raw);
+  for (let redirects = 0; redirects <= 5; redirects++) {
+    const response = await fetchImpl(url.href, {
+      headers: { Accept: accept, 'User-Agent': 'YapCord-updater', 'Cache-Control': 'no-cache' },
+      redirect: 'manual',
+      signal: typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(timeoutMs) : undefined,
+    });
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      if (redirects === 5) throw new Error('Too many redirects while checking for an update.');
+      const location = response.headers && response.headers.get('location');
+      if (!location) throw new Error('The update server returned an invalid redirect.');
+      url = safeUrl(new URL(location, url).href);
+      if (response.body) await response.body.cancel().catch(() => undefined);
+      continue;
+    }
+    if (response.url) {
+      const finalUrl = safeUrl(response.url);
+      if (finalUrl.href !== url.href) throw new Error('The update network request followed an unverified redirect.');
+    }
+    if (!response.ok) throw new Error(`Update server returned HTTP ${response.status}.`);
+    return response;
+  }
+  throw new Error('Too many redirects while checking for an update.');
+}
+
+async function readBytes(response, maxBytes, label) {
+  const length = Number(response.headers && response.headers.get('content-length')) || 0;
+  if (length > maxBytes) throw new Error(`${label} is larger than allowed.`);
+  if (response.body && typeof response.body.getReader === 'function') {
+    const reader = response.body.getReader();
+    const chunks = [];
+    let total = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > maxBytes) {
+          await reader.cancel().catch(() => undefined);
+          throw new Error(`${label} is larger than allowed.`);
+        }
+        chunks.push(Buffer.from(value));
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    return Buffer.concat(chunks, total);
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length > maxBytes) throw new Error(`${label} is larger than allowed.`);
+  return bytes;
+}
+
+async function fetchJson(fetchImpl, url, maxBytes = MAX_FEED_BYTES) {
+  const response = await fetchResponse(fetchImpl, url, 'application/vnd.github+json', 30000);
+  const bytes = await readBytes(response, maxBytes, 'Update response');
+  try { return JSON.parse(bytes.toString('utf8')); } catch (_) { throw new Error('GitHub returned invalid release information.'); }
+}
+
+async function fetchText(fetchImpl, url, maxBytes) {
+  const response = await fetchResponse(fetchImpl, url, 'application/octet-stream', 30000);
+  return (await readBytes(response, maxBytes, 'Update release asset')).toString('utf8');
 }
 
 async function downloadFile(fetchImpl, url, destination, expectedSize, onProgress = () => undefined) {
-  if (typeof fetchImpl !== 'function') throw new Error('The update network service is unavailable.');
-  const source = safeDownloadUrl(url);
+  const source = safeUrl(url);
   const size = Number(expectedSize) || 0;
-  if (size < 0 || size > MAX_INSTALLER_BYTES) throw new Error('The update is larger than the safety limit.');
-
-  const response = await fetchImpl(source.href, {
-    headers: { Accept: 'application/octet-stream', 'User-Agent': 'YapCord-updater' },
-    signal: requestSignal(10 * 60 * 1000),
-  });
-  if (!response.ok) throw new Error(`Installer download failed with HTTP ${response.status}.`);
-  if (response.url) safeDownloadUrl(response.url);
-
+  if (!Number.isSafeInteger(size) || size < 1 || size > MAX_INSTALLER_BYTES) throw new Error('The update installer has an invalid size.');
+  const response = await fetchResponse(fetchImpl, source.href, 'application/octet-stream', 10 * 60 * 1000);
   const contentLength = Number(response.headers && response.headers.get('content-length')) || 0;
-  if (contentLength > MAX_INSTALLER_BYTES || (size && contentLength && contentLength !== size)) {
-    throw new Error('The installer size does not match the update manifest.');
-  }
-  if (contentLength > 0 && contentLength > MAX_INSTALLER_BYTES) {
-    throw new Error('The update is larger than the safety limit.');
-  }
+  if (contentLength > MAX_INSTALLER_BYTES || (contentLength && contentLength !== size)) throw new Error('The installer size does not match the signed manifest.');
   if (!response.body) throw new Error('The installer download returned no data.');
 
   const partialPath = destination + '.partial';
   await fsp.rm(partialPath, { force: true });
-  const hash = crypto.createHash('sha512');
+  const hash = crypto.createHash('sha256');
   let bytes = 0;
   let lastPercent = -1;
   const meter = new Transform({
     transform(chunk, _encoding, callback) {
       bytes += chunk.length;
-      if (bytes > MAX_INSTALLER_BYTES) return callback(new Error('The update is larger than the safety limit.'));
-      if (size && bytes > size) return callback(new Error('The installer is larger than its manifest size.'));
+      if (bytes > MAX_INSTALLER_BYTES || bytes > size) return callback(new Error('The installer exceeded its signed size limit.'));
       hash.update(chunk);
-      if (size) {
-        const percent = Math.min(99, Math.floor((bytes / size) * 100));
-        if (percent !== lastPercent) {
-          lastPercent = percent;
-          try { onProgress(percent); } catch (_) { /* progress is best-effort */ }
-        }
+      const percent = Math.min(99, Math.floor((bytes / size) * 100));
+      if (percent !== lastPercent) {
+        lastPercent = percent;
+        try { onProgress(percent); } catch (_) { /* progress is best-effort */ }
       }
       callback(null, chunk);
     },
@@ -112,8 +137,8 @@ async function downloadFile(fetchImpl, url, destination, expectedSize, onProgres
   try {
     const body = typeof response.body.getReader === 'function' ? Readable.fromWeb(response.body) : response.body;
     await pipeline(body, meter, fs.createWriteStream(partialPath, { flags: 'wx', mode: 0o600 }));
-    if (size && bytes !== size) throw new Error(`The installer size is incomplete (${bytes} of ${size} bytes).`);
-    return { partialPath, bytes, sha512: hash.digest('hex').toLowerCase() };
+    if (bytes !== size) throw new Error(`The installer download is incomplete (${bytes} of ${size} bytes).`);
+    return { partialPath, bytes, sha256: hash.digest('hex').toLowerCase() };
   } catch (error) {
     await fsp.rm(partialPath, { force: true }).catch(() => undefined);
     throw error;
@@ -136,9 +161,7 @@ class Updater extends EventEmitter {
     this.downloadPromise = null;
   }
 
-  snapshot() {
-    return JSON.parse(JSON.stringify(this.state));
-  }
+  snapshot() { return JSON.parse(JSON.stringify(this.state)); }
 
   setState(patch) {
     this.state = { ...this.state, ...patch };
@@ -152,56 +175,46 @@ class Updater extends EventEmitter {
     }
     if (this.checkPromise) return this.checkPromise;
     this.checkPromise = this._check();
-    try {
-      return await this.checkPromise;
-    } finally {
-      this.checkPromise = null;
-    }
+    try { return await this.checkPromise; } finally { this.checkPromise = null; }
   }
 
   async _check() {
     this.setState({ state: 'checking', error: null, progress: null });
     try {
-      let manifest;
-      let release = null;
-      try {
-        manifest = await fetchJson(this.fetch, MANIFEST_URL + '?cache=' + Date.now());
-      } catch (manifestError) {
-        // Compatibility with releases that publish latest.json as a release asset.
-        release = await fetchJson(this.fetch, RELEASES_API);
-        if (release.draft || release.prerelease) throw manifestError;
-        const manifestAsset = (release.assets || []).find((asset) => asset.name === 'latest.json');
-        if (!manifestAsset) throw manifestError;
-        safeDownloadUrl(manifestAsset.browser_download_url);
-        manifest = await fetchJson(this.fetch, manifestAsset.browser_download_url);
-      }
-
-      const version = String(manifest.version || (release && release.tag_name) || '').replace(/^v/i, '').trim();
-      const installer = manifest.installer;
-      if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) {
-        throw new Error('The update manifest contains an invalid version.');
-      }
-      if (!installer || !installer.url || !installer.sha512) throw new Error('The update manifest is incomplete.');
-      const url = safeDownloadUrl(installer.url);
-      const sha512 = String(installer.sha512).toLowerCase();
-      const size = Number(installer.size);
-      if (!/^[a-f0-9]{128}$/.test(sha512) || !Number.isSafeInteger(size) || size <= 0 || size > MAX_INSTALLER_BYTES) {
-        throw new Error('The update manifest has an invalid installer size or SHA-512 digest.');
-      }
-      if (compareVersions(version, this.currentVersion) <= 0) {
+      const current = parseAppVersion(this.currentVersion);
+      if (!current) throw new Error('This YapCord build has an invalid version.');
+      const releases = await fetchJson(this.fetch, RELEASES_API);
+      if (!Array.isArray(releases)) throw new Error('GitHub returned an unexpected release list.');
+      const candidates = releases
+        .map((release) => ({ release, info: release && parseTag(release.tag_name) }))
+        .filter(({ release, info }) => release && !release.draft && !release.prerelease && info && info.channel === 'stable' && compareVersions(info, current) > 0)
+        .sort((a, b) => compareVersions(b.info, a.info));
+      if (!candidates.length) {
         this.setState({ state: 'up-to-date', available: null, error: null, progress: null });
         return this.snapshot();
       }
-
+      const { release } = candidates[0];
+      const manifestAsset = (release.assets || []).find((asset) => asset && asset.name === 'update.json');
+      const signatureAsset = (release.assets || []).find((asset) => asset && asset.name === 'update.json.sig');
+      const installerAsset = (release.assets || []).find((asset) => asset && asset.name === INSTALLER_NAME);
+      if (!manifestAsset || !signatureAsset || !installerAsset) throw new Error('The latest release is missing its signed update files.');
+      const manifestUrl = trustedReleaseAssetUrl(manifestAsset.browser_download_url, release.tag_name, manifestAsset.name);
+      const signatureUrl = trustedReleaseAssetUrl(signatureAsset.browser_download_url, release.tag_name, signatureAsset.name);
+      trustedReleaseAssetUrl(installerAsset.browser_download_url, release.tag_name, INSTALLER_NAME);
+      const [manifestText, signatureText] = await Promise.all([
+        fetchText(this.fetch, manifestUrl, 64 * 1024),
+        fetchText(this.fetch, signatureUrl, 1024),
+      ]);
+      const manifest = verifyManifest(manifestText, signatureText, release, 'stable', PUBLIC_KEY);
       this.setState({
         state: 'available',
         available: {
-          version,
-          notes: String((release && release.body) || manifest.notes || '').slice(0, 4000),
-          url: url.href,
-          sha512,
-          size,
-          fileName: `YapCord-${version}-Setup.exe`,
+          version: manifest.version,
+          notes: String(release.body || '').slice(0, 4000),
+          url: manifest.downloadUrl,
+          sha256: manifest.sha256,
+          size: manifest.sizeBytes,
+          fileName: `YapCord-${manifest.version}-Setup.exe`,
         },
         error: null,
         progress: null,
@@ -217,13 +230,9 @@ class Updater extends EventEmitter {
   async download() {
     if (this.downloadPromise) return this.downloadPromise;
     const update = this.state.available;
-    if (!update) throw new Error('No update is available.');
+    if (!update) throw new Error('No verified update is available.');
     this.downloadPromise = this._download(update);
-    try {
-      return await this.downloadPromise;
-    } finally {
-      this.downloadPromise = null;
-    }
+    try { return await this.downloadPromise; } finally { this.downloadPromise = null; }
   }
 
   async _download(update) {
@@ -236,8 +245,7 @@ class Updater extends EventEmitter {
         if (this.state.state === 'downloading' && progress !== this.state.progress) this.setState({ progress });
       });
       partialPath = result.partialPath;
-      if (result.bytes !== update.size) throw new Error('The downloaded update size failed verification.');
-      if (result.sha512 !== update.sha512) throw new Error('The downloaded update failed SHA-512 verification.');
+      if (result.bytes !== update.size || result.sha256 !== update.sha256) throw new Error('The downloaded installer failed its signed size or SHA-256 check.');
       await fsp.rm(destination, { force: true });
       await fsp.rename(partialPath, destination);
       this.setState({ state: 'ready', installerPath: destination, progress: 100, error: null });
@@ -252,15 +260,11 @@ class Updater extends EventEmitter {
 
   install() {
     const installerPath = this.state.installerPath;
-    if (this.state.state !== 'ready' || !installerPath || !fs.existsSync(installerPath)) {
-      throw new Error('Download the update before installing it.');
-    }
+    if (this.state.state !== 'ready' || !installerPath || !fs.existsSync(installerPath)) throw new Error('Download the update before installing it.');
     if (typeof this.quit !== 'function') throw new Error('The app cannot restart into the update installer.');
-
     let child;
-    try {
-      child = this.spawn(installerPath, ['/S'], { detached: true, windowsHide: true, stdio: 'ignore' });
-    } catch (error) {
+    try { child = this.spawn(installerPath, ['/S'], { detached: true, windowsHide: true, stdio: 'ignore' }); }
+    catch (error) {
       this.setState({ state: 'ready', error: `Could not start the installer: ${error.message || error}` });
       throw error;
     }
@@ -272,24 +276,11 @@ class Updater extends EventEmitter {
       this.setState({ state: 'installing', error: null });
       if (typeof child.unref === 'function') child.unref();
       setTimeout(() => {
-        try {
-          this.quit();
-        } catch (error) {
-          this.log.warn('could not close YapCord for update:', error && error.message);
-        }
+        try { this.quit(); } catch (error) { this.log.warn('could not close YapCord for update:', error && error.message); }
       }, 150);
     });
     return true;
   }
 }
 
-module.exports = {
-  Updater,
-  compareVersions,
-  safeDownloadUrl,
-  downloadFile,
-  fetchJson,
-  REPOSITORY,
-  MANIFEST_URL,
-  MAX_INSTALLER_BYTES,
-};
+module.exports = { Updater, safeUrl, trustedReleaseAssetUrl, fetchResponse, readBytes, fetchJson, downloadFile, REPOSITORY, RELEASES_API, MAX_INSTALLER_BYTES };

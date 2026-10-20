@@ -1,0 +1,91 @@
+name: Sign YapCord update manifest
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of the draft release, for example v1.0.8
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sign-yapcord-update-${{ github.event.inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  sign-and-verify:
+    if: github.repository == 'Jay2ez-web/YapCord' && github.ref == 'refs/heads/main'
+    environment: update-signing
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out trusted default-branch signing code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Validate the draft and sign the installer manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG_NAME: ${{ github.event.inputs.tag }}
+          YAPCORD_UPDATE_SIGNING_KEY: ${{ secrets.YAPCORD_UPDATE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Stable update tags must use vMAJOR.MINOR.PATCH." >&2
+            exit 1
+          fi
+          if [[ -z "${YAPCORD_UPDATE_SIGNING_KEY:-}" ]]; then
+            echo "Repository environment secret YAPCORD_UPDATE_SIGNING_KEY is missing." >&2
+            exit 1
+          fi
+          is_draft=$(gh release view "$TAG_NAME" --repo "$GH_REPO" --json isDraft --jq '.isDraft')
+          is_prerelease=$(gh release view "$TAG_NAME" --repo "$GH_REPO" --json isPrerelease --jq '.isPrerelease')
+          if [[ "$is_draft" != "true" || "$is_prerelease" != "false" ]]; then
+            echo "Refusing to sign: the release must be a stable draft." >&2
+            exit 1
+          fi
+          asset_names=$(gh release view "$TAG_NAME" --repo "$GH_REPO" --json assets --jq '[.assets[].name] | join(" ")')
+          if [[ " $asset_names " == *" update.json "* || " $asset_names " == *" update.json.sig "* ]]; then
+            echo "Signed assets already exist. Create a new version instead of replacing signed update metadata." >&2
+            exit 1
+          fi
+          release_dir="$RUNNER_TEMP/yapcord-release"
+          mkdir -p "$release_dir"
+          gh release download "$TAG_NAME" --repo "$GH_REPO" --pattern "YapCord1.0.exe" --dir "$release_dir"
+          node tools/create-update-manifest.js \
+            "$release_dir/YapCord1.0.exe" "$TAG_NAME" stable \
+            "$release_dir/update.json" "$release_dir/update.json.sig"
+          node tools/verify-update-manifest.js \
+            "$release_dir/YapCord1.0.exe" "$release_dir/update.json" \
+            "$release_dir/update.json.sig" "$TAG_NAME" stable
+          is_draft=$(gh release view "$TAG_NAME" --repo "$GH_REPO" --json isDraft --jq '.isDraft')
+          if [[ "$is_draft" != "true" ]]; then
+            echo "Refusing to upload signed assets: the release is no longer a draft." >&2
+            exit 1
+          fi
+          gh release upload "$TAG_NAME" \
+            "$release_dir/update.json" "$release_dir/update.json.sig" \
+            --repo "$GH_REPO"
+          verify_dir="$RUNNER_TEMP/yapcord-remote-verify"
+          mkdir -p "$verify_dir"
+          gh release download "$TAG_NAME" --repo "$GH_REPO" \
+            --pattern "YapCord1.0.exe" --pattern "update.json" \
+            --pattern "update.json.sig" --dir "$verify_dir"
+          node tools/verify-update-manifest.js \
+            "$verify_dir/YapCord1.0.exe" "$verify_dir/update.json" \
+            "$verify_dir/update.json.sig" "$TAG_NAME" stable
+          is_draft=$(gh release view "$TAG_NAME" --repo "$GH_REPO" --json isDraft --jq '.isDraft')
+          if [[ "$is_draft" != "true" ]]; then
+            echo "The release changed visibility during signing. Do not rely on it until reviewed." >&2
+            exit 1
+          fi
+          echo "Signed and remotely verified $TAG_NAME. Publish it only after reviewing the draft assets."
