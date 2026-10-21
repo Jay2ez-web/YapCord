@@ -160,8 +160,13 @@ test('owner crown and gold contributor star coexist with native Yapper badges', 
 
   const contributor = decorate(message(CONTRIBUTOR_ID));
   assert.deepEqual(badgeKeys(contributor), ['contributor']);
-  assert.match(css.get('custom-role-badge'), /data-ym-role="contributor"[^}]*#ffe18a/i);
-  assert.match(css.get('custom-role-badge'), /data-ym-role="contributor"[^}]*#dda000/i);
+  assert.match(css.get('custom-role-badge'), /data-ym-role="contributor"[^}]*#ffe58b/i);
+  assert.match(css.get('custom-role-badge'), /data-ym-role="contributor"[^}]*#d99508/i);
+  assert.match(css.get('custom-role-badge'), /--ym-badge-glow: #ffcf50/i);
+  assert.match(css.get('custom-role-badge'), /box-sizing: border-box/i);
+  assert.match(css.get('custom-role-badge'), /flex: 0 0 \.98em/i);
+  assert.match(css.get('custom-role-badge'), /vertical-align: -\.1em/i);
+  assert.match(css.get('custom-role-badge'), /0 0 5px var\(--ym-badge-glow\)/i);
   assert.equal(ownerName.children[0], native, 'the native site badge remains in the DOM');
 });
 

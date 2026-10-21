@@ -7,9 +7,9 @@
     ['fc529a6a-ddbd-445b-8bce-18a13acca5d0', { key: 'contributor', label: 'Contributor', icon: 'star' }],
   ]);
   const ICON_PATHS = Object.freeze({
-    crown: ['M3 7l5 4 4-7 4 7 5-4-2 11H5L3 7z M6 21h12'],
-    star: ['M12 3l2.6 5.3 5.9.9-4.25 4.15 1 5.85L12 16.4l-5.25 2.8 1-5.85L3.5 9.2l5.9-.9L12 3z'],
-    og: ['M12 3a6 6 0 1 0 0 12 6 6 0 0 0 0-12z', 'M8 14.5 7 21l5-2.5 5 2.5-1-6.5', 'M12 5.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z'],
+    crown: ['M3 6.5 7.2 10l4.8-6 4.8 6L21 6.5 18.7 18H5.3L3 6.5z', 'M5.5 21h13'],
+    star: ['M12 2.9 14.8 8.6l6.3.9-4.55 4.43 1.08 6.27L12 17.25l-5.63 2.95 1.08-6.27L2.9 9.5l6.3-.9L12 2.9z'],
+    og: ['M12 2.5 14.1 4l2.6-.1 1.1 2.4 2.4 1.1-.1 2.6 1.5 2-1.5 2 .1 2.6-2.4 1.1-1.1 2.4-2.6-.1-2.1 1.5-2.1-1.5-2.6.1-1.1-2.4-2.4-1.1.1-2.6-1.5-2 1.5-2-.1-2.6 2.4-1.1 1.1-2.4 2.6.1L12 2.5z', 'm12 6.8 1.55 3.15 3.48.5-2.52 2.45.6 3.46L12 14.72l-3.11 1.64.6-3.46-2.52-2.45 3.48-.5L12 6.8z'],
   });
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const NON_MESSAGE_NAMES = '.voice-person .name, .chat-row .name, .pc2-head';
@@ -73,7 +73,7 @@
     for (const d of ICON_PATHS[role.icon] || []) {
       const path = document.createElementNS(SVG_NS, 'path');
       path.setAttribute('d', d);
-      path.setAttribute('fill', role.icon === 'star' ? 'currentColor' : 'none');
+      path.setAttribute('fill', role.icon === 'og' && d.startsWith('m12') ? 'none' : 'currentColor');
       path.setAttribute('stroke', 'currentColor');
       path.setAttribute('stroke-width', '1.8');
       path.setAttribute('stroke-linecap', 'round');
@@ -181,23 +181,30 @@
   YM.dom.css.set('custom-role-badge', `
     .${BADGE_CLASS} {
       display: inline-flex;
+      position: relative;
+      isolation: isolate;
+      box-sizing: border-box;
+      flex: 0 0 .98em;
+      width: .98em;
+      min-width: .98em;
+      height: .98em;
       align-items: center;
       justify-content: center;
-      width: 1.25em;
-      height: 1.25em;
-      margin-left: 5px;
-      padding: 2px;
-      border-radius: 999px;
+      margin: 0 0 0 .32em;
+      padding: .15em;
+      border: 1px solid rgba(255,255,255,.38);
+      border-radius: .3em;
       color: #fff;
-      font-size: .72em;
-      line-height: 1;
-      vertical-align: middle;
-      box-shadow: 0 1px 4px rgba(20,20,30,.3);
+      font-size: 1em;
+      line-height: 0;
+      vertical-align: -.1em;
+      white-space: nowrap;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.32), 0 0 0 1px rgba(10,12,20,.22), 0 0 5px var(--ym-badge-glow), 0 0 10px color-mix(in srgb, var(--ym-badge-glow) 42%, transparent);
       user-select: none;
     }
-    .${BADGE_CLASS}[data-ym-role="owner"] { background: linear-gradient(135deg, #7c5cff, #b05cff); }
-    .${BADGE_CLASS}[data-ym-role="contributor"] { background: linear-gradient(135deg, #ffe18a, #dda000); color: #5b3b00; box-shadow: 0 1px 4px rgba(221,160,0,.4); }
-    .${BADGE_CLASS}[data-ym-role="og"] { background: linear-gradient(135deg, #46c9bd, #1677a7); }
-    .${BADGE_CLASS} svg { display: block; width: 100%; height: 100%; }
+    .${BADGE_CLASS}[data-ym-role="owner"] { --ym-badge-glow: #a978ff; background: linear-gradient(145deg, #9b69ff, #6435df); }
+    .${BADGE_CLASS}[data-ym-role="contributor"] { --ym-badge-glow: #ffcf50; background: linear-gradient(145deg, #ffe58b, #d99508); color: #573800; border-color: rgba(255,242,190,.76); }
+    .${BADGE_CLASS}[data-ym-role="og"] { --ym-badge-glow: #42d9d0; background: linear-gradient(145deg, #42d9d0, #087e9d); }
+    .${BADGE_CLASS} svg { display: block; flex: none; width: .72em; height: .72em; overflow: visible; }
   `);
 })();
