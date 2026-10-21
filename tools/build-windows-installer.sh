@@ -76,6 +76,8 @@ mkdir -p "$(dirname -- "$OUTPUT")"
 APP_VERSION="$(node -p "require('$ROOT/package.json').version")"
 (cd "$ROOT" && makensis -DPRODUCT_VERSION="$APP_VERSION" -DPAYLOAD_DIR="$PAYLOAD" -DOUTPUT_FILE="$OUTPUT" "$ROOT/tools/installer.nsi")
 [[ -s "$OUTPUT" ]] || { echo "NSIS did not create the output installer." >&2; exit 1; }
+# NSIS re-encodes icon entries; restore the exact supplied icon in the setup EXE's PE resources.
+node "$ROOT/tools/set-exe-icon.js" "$OUTPUT" "$ROOT/build/yapcord.ico" --icon-only
 printf 'Created: %s\n' "$OUTPUT"
 printf 'Size: %s bytes\n' "$(stat -c '%s' "$OUTPUT")"
 sha256sum "$OUTPUT"
