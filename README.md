@@ -6,7 +6,13 @@ YapCord is a desktop client built on Yapper. The standalone Windows app is brand
 
 The standalone installer keeps settings, themes, logs, and the login session in `%APPDATA%\YapCord1.0`. The optional in-Yapper integration keeps its separate profile in `%APPDATA%\YapCord`. The standalone installer does not migrate, read, or remove the regular YapCord/Yapper profile.
 
-The source includes the Electron app, multiple native windows, 107 renderer plugins, offline opt-in AutoCorrect with local custom typo pairs, local diagnostics, the NSIS installer, and the Windows updater. The updater accepts only published stable releases whose Ed25519-signed manifest matches the app, version, tag, channel, installer name, size, and SHA-256 digest. It downloads in the background when enabled, but only installs after the user chooses **Install and restart**.
+The source includes the Electron app, multiple native windows, 110 renderer plugins, offline opt-in AutoCorrect with local custom typo pairs, local diagnostics, the NSIS installer, and the Windows updater. The updater accepts only published stable releases whose Ed25519-signed manifest matches the app, version, tag, channel, installer name, size, and SHA-256 digest. It downloads in the background when enabled, but only installs after the user chooses **Install and restart**.
+
+### Suggested plugin adaptations
+
+The current source adds **SplitLargeMessages** (breaks long text at line/word boundaries and sends the remaining chunks sequentially), **Quoter** (creates a local YapCord-branded PNG quote card from a message), and **MoreUserTags** (shows role-derived owner/admin/staff/moderator labels in message headers). These are local adaptations inspired by [Equicord](https://github.com/Equicord/Equicord), whose project is GPL-3.0-or-later; the YapCord implementations target Yapper's APIs and do not copy the upstream plugin modules verbatim. SplitLargeMessages uses a configurable delay and does not bypass server slowmode or rate limits. Quoter does not fetch remote fonts or avatars.
+
+The other suggestions are not represented as working features because their source requirements are not available in Yapper: CustomRPC and PlatformIndicators rely on Discord-only activity/session stores, BannersEverywhere requires profile-banner data not exposed by the inspected Yapper profile model, and FriendshipRanks needs a friend-since timestamp that the loaded relationship map does not provide. ReviewDB would transmit account/review data to a separate third-party service and requires its own OAuth flow, so it is not enabled without a separate explicit service/data-sharing decision. Existing YapCord **FriendTags**, **PermissionsViewer**, and **ServerListIndicators** remain unchanged; the new role labels complement rather than replace the manual private friend tags or permission viewer.
 
 ## Build the Windows installer
 
