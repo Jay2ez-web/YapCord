@@ -7,6 +7,7 @@ const h = YM.dom.h;
 const fill = (el, ...kids) => el.replaceChildren(...kids.flat(Infinity).filter((k) => k !== null && k !== undefined && k !== false));
 const PAGES = [
   { id: 'plugins', label: 'Plugins' },
+  { id: 'badges', label: 'Badges' },
   { id: 'themes', label: 'Themes' },
   { id: 'wallpaper', label: 'Wallpaper' },
   { id: 'quickcss', label: 'Custom CSS' },
@@ -429,6 +430,40 @@ async function pageUpdater(root) {
   unsub.push(YM.native.app.onUpdateState(render));
 }
 
+function pageBadges(root) {
+  const get = (key, fallback) => YM.settings.get('badges.' + key, fallback);
+  const set = (key) => (value) => YM.settings.set('badges.' + key, value);
+  const hideBadges = YM.plugins.get('HideBadges');
+  const roleName = h('input', {
+    class: 'ym-input',
+    type: 'text',
+    value: String(get('ogRoleName', 'OG Yapper')),
+    maxLength: 64,
+    spellcheck: 'false',
+    'aria-label': 'OG Yapper role name',
+    onChange: (e) => set('ogRoleName')(String(e.target.value || '').trim().slice(0, 64)),
+  });
+
+  root.append(
+    h('h2', {}, 'Badges'),
+    h('p', { class: 'hint' }, 'These YapCord role icons are shown in your local client only. They do not add roles, grant permissions, or change what other people see.'),
+    section('YapCord role badges',
+      toggleRow('Show the owner crown', 'Display the crown for the configured YapCord owner.', get('showOwner', true), set('showOwner')),
+      toggleRow('Show the contributor star', 'Display the gold star for the configured YapCord contributor.', get('showContributor', true), set('showContributor')),
+      toggleRow('Show the OG Yapper badge', 'Automatically match members with the named role in the active server, using role data Yapper has already loaded.', get('showOgYapper', true), set('showOgYapper')),
+      h('div', { class: 'ym-opt' },
+        h('div', { class: 'toggle-label' }, 'OG role name'),
+        h('div', { class: 'hint' }, 'Role names are matched without regard to capitalization. Default: OG Yapper.'),
+        roleName),
+      h('p', { class: 'ym-hint' }, 'The contributor and OG switches are independent. If someone has both roles, leave both on to show both badges, or turn either one off.'),
+      h('p', { class: 'ym-hint' }, 'No additional API calls are made. Members only match when Yapper has their role membership in local state.')),
+    section('Yapper’s built-in badges',
+      hideBadges ? toggleRow('Show built-in Yapper badges', 'Keeps site-provided profile badges visible. Turning this off enables the HideBadges add-on.', !YM.plugins.isEnabled('HideBadges'), (show) => YM.plugins.setEnabled('HideBadges', !show))
+        : h('p', { class: 'ym-hint' }, 'YapCord does not hide Yapper’s built-in badges.'),
+      h('p', { class: 'ym-hint' }, 'YapCord role icons are added alongside the site’s own badges; the native badges are not replaced or removed by the role-badge feature.')),
+  );
+}
+
 async function pageApp(root) {
   const w = (k, d) => YM.settings.get('window.' + k, d);
   const set = (k) => (v) => YM.settings.set('window.' + k, v);
@@ -554,7 +589,7 @@ function pageLayout(root) {
   unsub.push(YM.Events.on('layout:change', () => { if (!body.contains(document.activeElement)) draw(); }));
 }
 
-const RENDER = { plugins: pagePlugins, themes: pageThemes, wallpaper: pageWallpaper, quickcss: pageQuickCss, layout: pageLayout, updater: pageUpdater, app: pageApp };
+const RENDER = { plugins: pagePlugins, badges: pageBadges, themes: pageThemes, wallpaper: pageWallpaper, quickcss: pageQuickCss, layout: pageLayout, updater: pageUpdater, app: pageApp };
 
 // ---- injection into Yapper's settings modal ------------------------------------------------------
 function currentSettingsEl() {

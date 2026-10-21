@@ -47,6 +47,7 @@ cp "$ROOT/build/icon.png" "$APP/build/icon.png"
 for file in \
   package.json \
   src/main/index.js \
+  src/main/settings.js \
   src/main/inject.js \
   src/main/updater.js \
   src/main/update-protocol.js \
@@ -55,6 +56,7 @@ for file in \
   src/renderer/090-settings-ui.js \
   src/renderer/060-messages.js \
   src/renderer/091-custom-badge.js \
+  build/icon.png \
   src/renderer/plugins/AlwaysAnimate.js \
   src/renderer/plugins/BetterFolders.js \
   src/renderer/plugins/ForceOwnerCrown.js \

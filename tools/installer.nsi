@@ -22,7 +22,7 @@ Var StartMenuFolder
 !include "MUI2.nsh"
 
 !define PRODUCT_NAME "YapCord 1.0"
-!define PRODUCT_VERSION "1.0.9"
+!define PRODUCT_VERSION "1.0.10"
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "Welcome to YapCord 1.0"
 !define MUI_WELCOMEPAGE_TEXT "This setup installs YapCord as a separate desktop app. Its settings and login data use a separate YapCord 1.0 profile. Your regular Yapper and YapCord data are not modified.$\r$\n$\r$\nClick Next to choose where to install YapCord."
@@ -41,11 +41,11 @@ Var StartMenuFolder
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_LANGUAGE "English"
 
-VIProductVersion "1.0.9.0"
+VIProductVersion "1.0.10.0"
 VIAddVersionKey /LANG=1033 "ProductName" "YapCord"
 VIAddVersionKey /LANG=1033 "FileDescription" "YapCord 1.0 Windows Installer"
-VIAddVersionKey /LANG=1033 "FileVersion" "1.0.9"
-VIAddVersionKey /LANG=1033 "ProductVersion" "1.0.9"
+VIAddVersionKey /LANG=1033 "FileVersion" "1.0.10"
+VIAddVersionKey /LANG=1033 "ProductVersion" "1.0.10"
 VIAddVersionKey /LANG=1033 "LegalCopyright" "YapCord contributors"
 
 Section "Install"
@@ -67,7 +67,7 @@ Section "Install"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\YapCord1.0" "Publisher" "YapCord"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\YapCord1.0" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\YapCord1.0" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\YapCord1.0" "DisplayIcon" "$INSTDIR\YapCord.exe"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\YapCord1.0" "DisplayIcon" "$INSTDIR\yapcord.ico"
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\YapCord1.0" "NoModify" 1
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\YapCord1.0" "NoRepair" 1
 SectionEnd

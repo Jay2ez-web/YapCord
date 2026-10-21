@@ -1,4 +1,4 @@
-// YapCord role badges are purely visual and client-side; they never change Yapper permissions or server roles.
+// YapCord role badges are local visual labels. They never change Yapper roles or permissions.
 
 (function () {
   const BADGE_CLASS = 'ym-custom-role-badge';
@@ -7,35 +7,88 @@
     ['fc529a6a-ddbd-445b-8bce-18a13acca5d0', { key: 'contributor', label: 'Contributor', icon: 'star' }],
   ]);
   const ICON_PATHS = Object.freeze({
-    crown: 'M3 7l5 4 4-7 4 7 5-4-2 11H5L3 7z M6 21h12',
-    star: 'M12 3l2.6 5.3 5.9.9-4.25 4.15 1 5.85L12 16.4l-5.25 2.8 1-5.85L3.5 9.2l5.9-.9L12 3z',
+    crown: ['M3 7l5 4 4-7 4 7 5-4-2 11H5L3 7z M6 21h12'],
+    star: ['M12 3l2.6 5.3 5.9.9-4.25 4.15 1 5.85L12 16.4l-5.25 2.8 1-5.85L3.5 9.2l5.9-.9L12 3z'],
+    og: ['M12 3a6 6 0 1 0 0 12 6 6 0 0 0 0-12z', 'M8 14.5 7 21l5-2.5 5 2.5-1-6.5', 'M12 5.5l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z'],
   });
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const NON_MESSAGE_NAMES = '.voice-person .name, .chat-row .name, .pc2-head';
   const MSG_AUTHOR = ':scope > .msg-body > .msg-head > .msg-author:not(.webhook-author)';
+
+  function setting(key, fallback) {
+    try { return YM.settings.get('badges.' + key, fallback); } catch (_) { return fallback; }
+  }
+
+  function normalizeRoleName(value) {
+    return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  }
+
+  function currentServerId() {
+    const state = YM.Store.getState();
+    if (!state) return null;
+    const channel = state.activeChannelId && state.channels && state.channels[state.activeChannelId];
+    if (channel) return channel.server_id || channel.guild_id || null;
+    return state.activeServerId || null;
+  }
+
+  function serverIdForMessage(message) {
+    if (!message) return currentServerId();
+    const direct = message.server_id || message.guild_id;
+    if (direct) return direct;
+    const channelId = message.channel_id || message.channelId;
+    const channel = channelId && YM.Store.channel(channelId);
+    // A loaded DM channel is explicitly not a server; never borrow a stale active server ID.
+    if (channel) return channel.server_id || channel.guild_id || null;
+    return currentServerId();
+  }
+
+  function hasRoleNamed(userId, serverId, requestedName) {
+    if (!userId || !serverId) return false;
+    const wanted = normalizeRoleName(requestedName);
+    if (!wanted) return false;
+    const state = YM.Store.getState();
+    if (!state) return false;
+    const ids = state.memberRoles && state.memberRoles[serverId] && state.memberRoles[serverId][userId];
+    const roles = state.roles && state.roles[serverId];
+    if (!Array.isArray(ids) || !Array.isArray(roles)) return false;
+    return roles.some((role) => role && ids.includes(role.id) && normalizeRoleName(role.name) === wanted);
+  }
+
+  function badgesFor(userId, serverId) {
+    const badges = [];
+    const fixed = ROLE_BY_USER_ID.get(String(userId || ''));
+    if (fixed && fixed.key === 'owner' && setting('showOwner', true)) badges.push(fixed);
+    if (fixed && fixed.key === 'contributor' && setting('showContributor', true)) badges.push(fixed);
+    if (setting('showOgYapper', true) && hasRoleNamed(userId, serverId, setting('ogRoleName', 'OG Yapper'))) {
+      badges.push({ key: 'og', label: 'OG Yapper', icon: 'og' });
+    }
+    return badges;
+  }
 
   function makeIcon(role) {
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('focusable', 'false');
-
-    const path = document.createElementNS(SVG_NS, 'path');
-    path.setAttribute('d', ICON_PATHS[role.icon]);
-    path.setAttribute('fill', role.icon === 'star' ? 'currentColor' : 'none');
-    path.setAttribute('stroke', 'currentColor');
-    path.setAttribute('stroke-width', '1.8');
-    path.setAttribute('stroke-linecap', 'round');
-    path.setAttribute('stroke-linejoin', 'round');
-    svg.append(path);
+    for (const d of ICON_PATHS[role.icon] || []) {
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', role.icon === 'star' ? 'currentColor' : 'none');
+      path.setAttribute('stroke', 'currentColor');
+      path.setAttribute('stroke-width', '1.8');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+      svg.append(path);
+    }
     return svg;
   }
 
   function addBadge(nameEl, role) {
+    const label = 'YapCord ' + role.label;
     const badge = YM.dom.h('span', {
       class: BADGE_CLASS,
-      title: 'YapCord ' + role.label,
-      'aria-label': 'YapCord ' + role.label,
+      title: label,
+      'aria-label': label,
       role: 'img',
     });
     badge.setAttribute('data-ym-role', role.key);
@@ -50,25 +103,31 @@
       || '';
   }
 
-  function syncName(nameEl, id = userIdFor(nameEl)) {
-    if (!nameEl) return;
-    const role = ROLE_BY_USER_ID.get(String(id || ''));
-    const existing = nameEl.querySelector(':scope > .' + BADGE_CLASS);
-    const expectedRole = role ? role.key : null;
-    if (existing && existing.getAttribute('data-ym-role') === expectedRole) return;
-    if (existing) existing.remove();
-    if (!role) return;
+  function serverIdForElement(el) {
+    const host = el && el.closest ? el.closest('[data-server-id], [data-guild-id]') : null;
+    if (host) return host.getAttribute('data-server-id') || host.getAttribute('data-guild-id') || null;
+    return currentServerId();
+  }
 
-    // Replace the optional personal-crown emoji with the role icon so the owner gets one badge.
+  function syncName(nameEl, id = userIdFor(nameEl), serverId = serverIdForElement(nameEl)) {
+    if (!nameEl) return;
+    const desired = badgesFor(String(id || ''), serverId);
+    const existing = Array.from(nameEl.querySelectorAll(':scope > .' + BADGE_CLASS));
+    const isCurrent = existing.length === desired.length && desired.every((role, i) => existing[i].getAttribute('data-ym-role') === role.key);
+    if (isCurrent) return;
+    existing.forEach((el) => el.remove());
+    if (!desired.length) return;
+
+    // Replace the optional personal-crown emoji when a YapCord role badge is visible.
     nameEl.querySelectorAll(':scope > .ym-owner-crown').forEach((el) => el.remove());
-    addBadge(nameEl, role);
+    desired.forEach((role) => addBadge(nameEl, role));
   }
 
   function decorateMessage({ el, message }) {
     const nameEl = el && el.querySelector(MSG_AUTHOR);
     if (!nameEl) return;
     const id = message && (message.author_id || message.authorId) || userIdFor(nameEl);
-    syncName(nameEl, id);
+    syncName(nameEl, id, serverIdForMessage(message));
   }
 
   function syncNonMessageNames() {
@@ -84,14 +143,22 @@
         syncNonMessageNames();
       });
     };
+    const refreshAll = () => {
+      queueNonMessageSync();
+      YM.messages.refresh();
+    };
     const offDecorate = YM.messages.decorate(decorateMessage);
     const offUserNames = YM.dom.watch(NON_MESSAGE_NAMES, syncName);
     const offStore = YM.Events.on('store:change', (next, prev) => {
-      if (next.profiles !== prev.profiles || next.voiceMembers !== prev.voiceMembers || next.channels !== prev.channels || next.activeChannelId !== prev.activeChannelId) {
-        queueNonMessageSync();
-      }
+      const rolesChanged = next.roles !== prev.roles || next.memberRoles !== prev.memberRoles || next.activeServerId !== prev.activeServerId;
+      const namesChanged = next.profiles !== prev.profiles || next.voiceMembers !== prev.voiceMembers || next.channels !== prev.channels || next.activeChannelId !== prev.activeChannelId;
+      if (rolesChanged || namesChanged) queueNonMessageSync();
+      if (rolesChanged || next.channels !== prev.channels || next.activeChannelId !== prev.activeChannelId) YM.messages.refresh();
     });
-    const offStoreReady = YM.Events.on('store:ready', () => YM.messages.forEachVisible(decorateMessage));
+    const offStoreReady = YM.Events.on('store:ready', refreshAll);
+    const offSettings = YM.settings.onChange((path) => {
+      if (String(path || '').startsWith('badges.')) refreshAll();
+    });
     syncNonMessageNames();
     YM.messages.forEachVisible(decorateMessage);
 
@@ -101,6 +168,7 @@
       try { offUserNames && offUserNames(); } catch (_) {}
       try { offStore && offStore(); } catch (_) {}
       try { offStoreReady && offStoreReady(); } catch (_) {}
+      try { offSettings && offSettings(); } catch (_) {}
       document.querySelectorAll('.' + BADGE_CLASS).forEach((el) => el.remove());
     };
   }
@@ -120,18 +188,16 @@
       margin-left: 5px;
       padding: 2px;
       border-radius: 999px;
-      background: linear-gradient(135deg, #7c5cff, #b05cff);
       color: #fff;
       font-size: .72em;
       line-height: 1;
       vertical-align: middle;
-      box-shadow: 0 1px 4px rgba(124,92,255,.45);
+      box-shadow: 0 1px 4px rgba(20,20,30,.3);
       user-select: none;
     }
-    .${BADGE_CLASS} svg {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
+    .${BADGE_CLASS}[data-ym-role="owner"] { background: linear-gradient(135deg, #7c5cff, #b05cff); }
+    .${BADGE_CLASS}[data-ym-role="contributor"] { background: linear-gradient(135deg, #ffe18a, #dda000); color: #5b3b00; box-shadow: 0 1px 4px rgba(221,160,0,.4); }
+    .${BADGE_CLASS}[data-ym-role="og"] { background: linear-gradient(135deg, #46c9bd, #1677a7); }
+    .${BADGE_CLASS} svg { display: block; width: 100%; height: 100%; }
   `);
 })();

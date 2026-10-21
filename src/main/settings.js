@@ -20,6 +20,12 @@ const DEFAULTS = {
     autoUpdate: true,
     notifyReady: true,
   },
+  badges: {
+    showOwner: true,
+    showContributor: true,
+    showOgYapper: true,
+    ogRoleName: 'OG Yapper',
+  },
   enabledThemes: [], // file names inside <userData>/themes
   themeLinks: [], // remote CSS urls
   wallpaper: {
