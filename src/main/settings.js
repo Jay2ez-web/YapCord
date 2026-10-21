@@ -21,6 +21,7 @@ const DEFAULTS = {
     notifyReady: true,
   },
   badges: {
+    selected: null, // null preserves legacy per-badge preferences until the user saves a selection
     showOwner: true,
     showContributor: true,
     showOgYapper: true,

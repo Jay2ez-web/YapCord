@@ -160,13 +160,14 @@ test('owner crown and gold contributor star coexist with native Yapper badges', 
 
   const contributor = decorate(message(CONTRIBUTOR_ID));
   assert.deepEqual(badgeKeys(contributor), ['contributor']);
-  assert.match(css.get('custom-role-badge'), /data-ym-role="contributor"[^}]*#ffe58b/i);
-  assert.match(css.get('custom-role-badge'), /data-ym-role="contributor"[^}]*#d99508/i);
-  assert.match(css.get('custom-role-badge'), /--ym-badge-glow: #ffcf50/i);
+  assert.match(css.get('custom-role-badge'), /data-ym-role="contributor"[^}]*#ffd45c/i);
+  assert.match(css.get('custom-role-badge'), /data-ym-role="contributor"[^}]*#d99b16/i);
+  assert.match(css.get('custom-role-badge'), /border-radius: \.22em/i);
+  assert.match(css.get('custom-role-badge'), /--ym-badge-glow: #ffd45c/i);
   assert.match(css.get('custom-role-badge'), /box-sizing: border-box/i);
   assert.match(css.get('custom-role-badge'), /flex: 0 0 \.98em/i);
   assert.match(css.get('custom-role-badge'), /vertical-align: -\.1em/i);
-  assert.match(css.get('custom-role-badge'), /0 0 5px var\(--ym-badge-glow\)/i);
+  assert.match(css.get('custom-role-badge'), /0 0 3px color-mix/i);
   assert.equal(ownerName.children[0], native, 'the native site badge remains in the DOM');
 });
 
@@ -210,6 +211,17 @@ test('contributors with the OG role can show both badges or independently hide e
   assert.deepEqual(badgeKeys(rowName), [], 'turning off OG leaves no role badges');
   assert.equal(settingsData.showContributor, false);
   assert.equal(settingsData.showOgYapper, false);
+});
+
+test('an explicit settings selection can display multiple badge types simultaneously', () => {
+  const state = {
+    activeServerId: 'server-1',
+    channels: { 'channel-1': { server_id: 'server-1' } },
+    roles: { 'server-1': [{ id: 'og-role', name: 'OG Yapper' }] },
+    memberRoles: { 'server-1': { [CONTRIBUTOR_ID]: ['og-role'] } },
+  };
+  const { decorate } = loadBadge({ state, prefs: { selected: ['contributor', 'og'], showContributor: false, showOgYapper: false } });
+  assert.deepEqual(badgeKeys(decorate(message(CONTRIBUTOR_ID))), ['contributor', 'og']);
 });
 
 test('badge cleanup removes only YapCord badges', () => {

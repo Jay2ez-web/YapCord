@@ -57,9 +57,13 @@
   function badgesFor(userId, serverId) {
     const badges = [];
     const fixed = ROLE_BY_USER_ID.get(String(userId || ''));
-    if (fixed && fixed.key === 'owner' && setting('showOwner', true)) badges.push(fixed);
-    if (fixed && fixed.key === 'contributor' && setting('showContributor', true)) badges.push(fixed);
-    if (setting('showOgYapper', true) && hasRoleNamed(userId, serverId, setting('ogRoleName', 'OG Yapper'))) {
+    const selected = setting('selected', null);
+    const enabled = (key, legacyKey) => Array.isArray(selected)
+      ? selected.includes(key)
+      : setting(legacyKey, true) !== false;
+    if (fixed && fixed.key === 'owner' && enabled('owner', 'showOwner')) badges.push(fixed);
+    if (fixed && fixed.key === 'contributor' && enabled('contributor', 'showContributor')) badges.push(fixed);
+    if (enabled('og', 'showOgYapper') && hasRoleNamed(userId, serverId, setting('ogRoleName', 'OG Yapper'))) {
       badges.push({ key: 'og', label: 'OG Yapper', icon: 'og' });
     }
     return badges;
@@ -182,7 +186,6 @@
     .${BADGE_CLASS} {
       display: inline-flex;
       position: relative;
-      isolation: isolate;
       box-sizing: border-box;
       flex: 0 0 .98em;
       width: .98em;
@@ -191,20 +194,20 @@
       align-items: center;
       justify-content: center;
       margin: 0 0 0 .32em;
-      padding: .15em;
-      border: 1px solid rgba(255,255,255,.38);
-      border-radius: .3em;
+      padding: .14em;
+      border: 0;
+      border-radius: .22em;
       color: #fff;
       font-size: 1em;
       line-height: 0;
       vertical-align: -.1em;
       white-space: nowrap;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.32), 0 0 0 1px rgba(10,12,20,.22), 0 0 5px var(--ym-badge-glow), 0 0 10px color-mix(in srgb, var(--ym-badge-glow) 42%, transparent);
+      box-shadow: 0 0 3px color-mix(in srgb, var(--ym-badge-glow) 80%, transparent), 0 0 7px color-mix(in srgb, var(--ym-badge-glow) 38%, transparent);
       user-select: none;
     }
-    .${BADGE_CLASS}[data-ym-role="owner"] { --ym-badge-glow: #a978ff; background: linear-gradient(145deg, #9b69ff, #6435df); }
-    .${BADGE_CLASS}[data-ym-role="contributor"] { --ym-badge-glow: #ffcf50; background: linear-gradient(145deg, #ffe58b, #d99508); color: #573800; border-color: rgba(255,242,190,.76); }
-    .${BADGE_CLASS}[data-ym-role="og"] { --ym-badge-glow: #42d9d0; background: linear-gradient(145deg, #42d9d0, #087e9d); }
+    .${BADGE_CLASS}[data-ym-role="owner"] { --ym-badge-glow: #a879ff; background: #8755e8; }
+    .${BADGE_CLASS}[data-ym-role="contributor"] { --ym-badge-glow: #ffd45c; background: #d99b16; color: #fff8e8; }
+    .${BADGE_CLASS}[data-ym-role="og"] { --ym-badge-glow: #5fe4d9; background: #28b9b4; }
     .${BADGE_CLASS} svg { display: block; flex: none; width: .72em; height: .72em; overflow: visible; }
   `);
 })();

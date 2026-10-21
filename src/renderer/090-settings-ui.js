@@ -434,6 +434,23 @@ function pageBadges(root) {
   const get = (key, fallback) => YM.settings.get('badges.' + key, fallback);
   const set = (key) => (value) => YM.settings.set('badges.' + key, value);
   const hideBadges = YM.plugins.get('HideBadges');
+  const selectedValue = get('selected', null);
+  const selected = new Set(Array.isArray(selectedValue) ? selectedValue : [
+    get('showOwner', true) !== false ? 'owner' : null,
+    get('showContributor', true) !== false ? 'contributor' : null,
+    get('showOgYapper', true) !== false ? 'og' : null,
+  ].filter(Boolean));
+  const badgeChoices = [
+    ['owner', 'Owner crown', 'Shown only for the configured YapCord owner.'],
+    ['contributor', 'Contributor star', 'Shown only for the configured YapCord contributor.'],
+    ['og', 'OG Yapper', 'Shown for members whose loaded server roles include the configured OG role.'],
+  ];
+  const badgeOptions = h('div', { class: 'ym-badge-picker', role: 'group', 'aria-label': 'Select badges to display' },
+    badgeChoices.map(([key, label, hint]) => toggleRow(label, hint, selected.has(key), (checked) => {
+      if (checked) selected.add(key);
+      else selected.delete(key);
+      YM.settings.set('badges.selected', badgeChoices.filter(([id]) => selected.has(id)).map(([id]) => id));
+    })));
   const roleName = h('input', {
     class: 'ym-input',
     type: 'text',
@@ -446,11 +463,10 @@ function pageBadges(root) {
 
   root.append(
     h('h2', {}, 'Badges'),
-    h('p', { class: 'hint' }, 'These YapCord role icons are shown in your local client only. They do not add roles, grant permissions, or change what other people see.'),
+    h('p', { class: 'hint' }, 'Choose more than one badge if you want. A selected badge only appears beside people who actually match that role; this does not add roles or change what other people see.'),
     section('YapCord role badges',
-      toggleRow('Show the owner crown', 'Display the crown for the configured YapCord owner.', get('showOwner', true), set('showOwner')),
-      toggleRow('Show the contributor star', 'Display the gold star for the configured YapCord contributor.', get('showContributor', true), set('showContributor')),
-      toggleRow('Show the OG Yapper badge', 'Automatically match members with the named role in the active server, using role data Yapper has already loaded.', get('showOgYapper', true), set('showOgYapper')),
+      h('div', { class: 'ym-badge-picker-title' }, 'Select badges to display (multiple allowed)'),
+      badgeOptions,
       h('div', { class: 'ym-opt' },
         h('div', { class: 'toggle-label' }, 'OG role name'),
         h('div', { class: 'hint' }, 'Role names are matched without regard to capitalization. Default: OG Yapper.'),
