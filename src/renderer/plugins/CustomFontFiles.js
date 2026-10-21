@@ -130,7 +130,7 @@
     tags: ['Appearance'],
     enabledByDefault: false,
     options: {
-      enabledFontId: { type: 'string', default: '', description: 'Internal: id of the active font (managed by the font list below)' },
+      enabledFontId: { type: 'string', default: '', hidden: true, description: 'Internal: id of the active font (managed by the font list below)' },
       fontSize: { type: 'number', default: 15, min: 10, max: 24, step: 1, description: 'Base chat font size in px' },
       applyEverywhere: { type: 'boolean', default: true, description: 'Apply to the whole app (off = chat messages only)' },
       fallback: { type: 'string', default: 'sans-serif', description: 'Fallback stack after your font (e.g. sans-serif, Inter, system-ui)' },

@@ -27,10 +27,13 @@ TMP="$(mktemp -d "${TMPDIR:-/tmp}/yapcord-installer.XXXXXX")"
 trap 'rm -rf -- "$TMP"' EXIT
 if [[ "$(uname -s)" == Linux ]] && ! command -v wine64 >/dev/null 2>&1; then
   WINE_BIN="$(command -v wine || true)"
-  [[ -n "$WINE_BIN" ]] || { echo "Wine is required to set the Windows app executable icon." >&2; exit 1; }
-  mkdir -p "$TMP/wine-bin"
-  ln -s "$WINE_BIN" "$TMP/wine-bin/wine64"
-  export PATH="$TMP/wine-bin:$PATH"
+  if [[ -n "$WINE_BIN" ]]; then
+    mkdir -p "$TMP/wine-bin"
+    ln -s "$WINE_BIN" "$TMP/wine-bin/wine64"
+    export PATH="$TMP/wine-bin:$PATH"
+  else
+    echo "Wine is unavailable; preserving the icon already embedded in the supplied Windows runtime." >&2
+  fi
 fi
 PAYLOAD="$TMP/payload"
 APP="$TMP/app"
@@ -47,7 +50,9 @@ mkdir -p "$PAYLOAD" "$APP/build"
 cp "$ROOT/package.json" "$APP/package.json"
 cp -a "$ROOT/src" "$ROOT/themes" "$APP/"
 cp "$ROOT/build/icon.png" "$APP/build/icon.png"
-node "$ROOT/tools/set-exe-icon.js" "$PAYLOAD/YapCord.exe" "$ROOT/build/yapcord.ico"
+if command -v wine64 >/dev/null 2>&1 || command -v wine >/dev/null 2>&1; then
+  node "$ROOT/tools/set-exe-icon.js" "$PAYLOAD/YapCord.exe" "$ROOT/build/yapcord.ico"
+fi
 "$ASAR" pack "$APP" "$PAYLOAD/resources/app.asar"
 "$ASAR" extract "$PAYLOAD/resources/app.asar" "$VERIFY"
 
@@ -77,7 +82,9 @@ APP_VERSION="$(node -p "require('$ROOT/package.json').version")"
 (cd "$ROOT" && makensis -DPRODUCT_VERSION="$APP_VERSION" -DPAYLOAD_DIR="$PAYLOAD" -DOUTPUT_FILE="$OUTPUT" "$ROOT/tools/installer.nsi")
 [[ -s "$OUTPUT" ]] || { echo "NSIS did not create the output installer." >&2; exit 1; }
 # NSIS re-encodes icon entries; restore the exact supplied icon in the setup EXE's PE resources.
-node "$ROOT/tools/set-exe-icon.js" "$OUTPUT" "$ROOT/build/yapcord.ico" --icon-only
+if command -v wine64 >/dev/null 2>&1 || command -v wine >/dev/null 2>&1; then
+  node "$ROOT/tools/set-exe-icon.js" "$OUTPUT" "$ROOT/build/yapcord.ico" --icon-only
+fi
 printf 'Created: %s\n' "$OUTPUT"
 printf 'Size: %s bytes\n' "$(stat -c '%s' "$OUTPUT")"
 sha256sum "$OUTPUT"

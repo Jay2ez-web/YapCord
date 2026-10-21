@@ -1,3 +1,10 @@
+## 1.1.1
+
+- Added the three recovered plugins from the supplied current installer, preserving the full 110-plugin library.
+- Fixed AlwaysAnimate settings-panel flicker by excluding the real `.ym-panel` settings tree.
+- Hid the CustomFontFiles internal font ID and kept direct multi-file import with automatic family naming.
+- Coalesced BetterFolders rail updates to reduce mutation/render work.
+
 # Signed update releases
 
 The current client accepts only published stable releases with tags of the form `vMAJOR.MINOR.PATCH`. A release is considered an update only when all of the following are true: the release is newer than the running app, its tag and stable channel agree, it has the expected `YapCord1.0.exe` asset, and both `update.json` and `update.json.sig` verify with the public key embedded in the client. The signed manifest binds the app ID, version, tag, channel, asset name, exact size, and SHA-256 digest.

@@ -100,9 +100,9 @@
 
       ctx.css(`
 /* Do not override the React settings modal: forced micro-animations there can trigger layout feedback. */
-html[data-ym-always-animate] body :not(.settings):not(.settings *),
-html[data-ym-always-animate] body :not(.settings):not(.settings *)::before,
-html[data-ym-always-animate] body :not(.settings):not(.settings *)::after {
+html[data-ym-always-animate] body :not(.settings):not(.settings *):not(.ym-panel):not(.ym-panel *),
+html[data-ym-always-animate] body :not(.settings):not(.settings *):not(.ym-panel):not(.ym-panel *)::before,
+html[data-ym-always-animate] body :not(.settings):not(.settings *):not(.ym-panel):not(.ym-panel *)::after {
   animation-play-state: running !important;
 }
 html[data-ym-always-animate] body :not(.settings):not(.settings *) .typing-dots i { animation: revert !important; opacity: 1; }

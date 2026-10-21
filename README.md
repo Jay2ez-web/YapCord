@@ -1,6 +1,6 @@
 # YapCord
 
-YapCord is a desktop client built on Yapper. The standalone Windows app is branded **YapCord**; the current release is **YapCord 1.1** (version `1.1.0`). The installer keeps the existing `YapCord1.0` install/profile paths so upgrades preserve the existing app data.
+YapCord is a desktop client built on Yapper. The standalone Windows app is branded **YapCord**; the current release is **YapCord 1.1.1** (version `1.1.1`). The installer keeps the existing `YapCord1.0` install/profile paths so upgrades preserve the existing app data.
 
 ## Profiles and included features
 

@@ -45,6 +45,7 @@ function humanize(key) {
 
 // ---- plugin option controls ----------------------------------------------------------------------
 function optionControl(plugin, key, def) {
+  if (def && def.hidden) return null;
   const st = plugin.settings;
   const title = def.description || humanize(key);
   const value = st.store[key];
@@ -99,7 +100,7 @@ function tagHue(text) {
 function pluginCard(plugin, expanded, onToggleExpand) {
   const running = YM.plugins.isRunning(plugin.name);
   const err = YM.plugins.errors.get(plugin.name);
-  const optionKeys = Object.keys(plugin.options);
+  const optionKeys = Object.keys(plugin.options).filter((key) => !plugin.options[key].hidden);
   return h('div', { class: 'ym-plug' + (running ? ' on' : '') },
     h('div', { class: 'ym-plug-body' },
       h('div', { class: 'ym-plug-name' }, plugin.name),
