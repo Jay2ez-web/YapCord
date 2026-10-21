@@ -1,8 +1,9 @@
 {
-  "version": "1.0.7",
+  "version": "1.1.1",
+  "notes": "YapCord 1.1.1: settings flicker fix, BetterFolders performance improvements, hidden font internals, and the full 110-plugin source.",
   "installer": {
-    "url": "https://files.manuscdn.com/user_upload_by_module/session_file/310519664031968928/FgqJsOwROozynvbT.exe",
-    "size": 98865331,
-    "sha512": "edbf83db80f22706eb0e5ef1ccf2b0fee0879a1303496ac62b8b9c71dd1ff689962314625637808f1b21a28ef049ffc5092b03b3b90c206ffe1b904be549a3ca"
+    "url": "https://github.com/Jay2ez-web/YapCord/releases/download/v1.1.1/YapCord1.0.exe",
+    "size": 99008829,
+    "sha512": "a7d0cdcb8b4ef403cda89bd73f32127558906c590212ae60d74cf37344d0e950141b22740f709a75c1a8a32319ae64af6c7466d275421ebde77665a1e3c643c1"
   }
 }
