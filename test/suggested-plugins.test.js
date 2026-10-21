@@ -78,7 +78,7 @@ test('SplitLargeMessages sends follow-ups sequentially with original auth option
   assert.equal(sent[0].init.headers.Authorization, 'Bearer test-token');
 });
 
-test('MoreUserTags derives only labels supported by loaded server roles', () => {
+test('MoreUserTags derives only permission labels supported by loaded server roles', () => {
   const tags = loadPlugin('MoreUserTags.js', 'MoreUserTags').api;
   const state = {
     servers: { s1: { owner_id: 'owner' } },
@@ -89,7 +89,7 @@ test('MoreUserTags derives only labels supported by loaded server roles', () => 
     ] },
     memberRoles: { s1: { admin: ['admin'], mod: ['mod'], voice: ['voice'], plain: [] } },
   };
-  assert.equal(tags.tagFor(state, 's1', 'owner').key, 'owner');
+  assert.equal(tags.tagFor(state, 's1', 'owner'), null);
   assert.equal(tags.tagFor(state, 's1', 'admin').key, 'admin');
   assert.equal(tags.tagFor(state, 's1', 'mod').key, 'moderator');
   assert.equal(tags.tagFor(state, 's1', 'voice').key, 'voice');

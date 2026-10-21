@@ -14,8 +14,6 @@
 
   function tagFor(state, serverId, userId, options = {}) {
     if (!state || !serverId || !userId) return null;
-    const server = state.servers && state.servers[serverId];
-    if (server && String(server.owner_id || '') === String(userId) && options.owner !== false) return { key: 'owner', label: 'OWNER' };
     const roles = rolesFor(state, serverId, userId);
     const has = (keys) => roles.some((role) => keys.some((key) => !!(role[key] || (role.perms && role.perms[key]))));
     if (options.admin !== false && has(['administrator'])) return { key: 'admin', label: 'ADMIN' };
@@ -47,13 +45,12 @@
   let ctxSettings = {};
   YM.definePlugin({
     name: 'MoreUserTags',
-    description: 'Shows a local OWNER, ADMIN, STAFF, MOD, or VC MOD label beside message authors using roles Yapper has already loaded. This never changes server roles or permissions.',
+    description: 'Shows local ADMIN, STAFF, MOD, or VC MOD labels beside message authors using roles Yapper has already loaded. Owners use the separate purple icon badge. This never changes server roles or permissions.',
     authors: ['YapCord adaptation; inspired by Equicord'],
     tags: ['Servers', 'Appearance'],
     enabledByDefault: true,
     api: { rolesFor, tagFor },
     options: {
-      owner: { type: 'boolean', default: true, description: 'Show owner labels.' },
       admin: { type: 'boolean', default: true, description: 'Show administrator labels.' },
       staff: { type: 'boolean', default: true, description: 'Show server management labels.' },
       moderator: { type: 'boolean', default: true, description: 'Show message and member moderation labels.' },
