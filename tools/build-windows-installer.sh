@@ -25,6 +25,13 @@ done
 
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/yapcord-installer.XXXXXX")"
 trap 'rm -rf -- "$TMP"' EXIT
+if [[ "$(uname -s)" == Linux ]] && ! command -v wine64 >/dev/null 2>&1; then
+  WINE_BIN="$(command -v wine || true)"
+  [[ -n "$WINE_BIN" ]] || { echo "Wine is required to set the Windows app executable icon." >&2; exit 1; }
+  mkdir -p "$TMP/wine-bin"
+  ln -s "$WINE_BIN" "$TMP/wine-bin/wine64"
+  export PATH="$TMP/wine-bin:$PATH"
+fi
 PAYLOAD="$TMP/payload"
 APP="$TMP/app"
 VERIFY="$TMP/verify"
@@ -40,6 +47,7 @@ mkdir -p "$PAYLOAD" "$APP/build"
 cp "$ROOT/package.json" "$APP/package.json"
 cp -a "$ROOT/src" "$ROOT/themes" "$APP/"
 cp "$ROOT/build/icon.png" "$APP/build/icon.png"
+node "$ROOT/tools/set-exe-icon.js" "$PAYLOAD/YapCord.exe" "$ROOT/build/yapcord.ico"
 "$ASAR" pack "$APP" "$PAYLOAD/resources/app.asar"
 "$ASAR" extract "$PAYLOAD/resources/app.asar" "$VERIFY"
 
@@ -65,7 +73,8 @@ for file in \
 done
 
 mkdir -p "$(dirname -- "$OUTPUT")"
-(cd "$ROOT" && makensis -DPAYLOAD_DIR="$PAYLOAD" -DOUTPUT_FILE="$OUTPUT" "$ROOT/tools/installer.nsi")
+APP_VERSION="$(node -p "require('$ROOT/package.json').version")"
+(cd "$ROOT" && makensis -DPRODUCT_VERSION="$APP_VERSION" -DPAYLOAD_DIR="$PAYLOAD" -DOUTPUT_FILE="$OUTPUT" "$ROOT/tools/installer.nsi")
 [[ -s "$OUTPUT" ]] || { echo "NSIS did not create the output installer." >&2; exit 1; }
 printf 'Created: %s\n' "$OUTPUT"
 printf 'Size: %s bytes\n' "$(stat -c '%s' "$OUTPUT")"

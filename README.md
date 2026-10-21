@@ -16,9 +16,9 @@ The other suggestions are not represented as working features because their sour
 
 ## Build the Windows installer
 
-The helper reuses the supplied Windows/Electron runtime, replaces its app archive with the current source, and wraps that staged payload in the NSIS installer. It does not execute or modify the supplied base installer.
+The helper reuses the supplied Windows/Electron runtime, replaces its app archive with the current source, embeds the supplied YapCord icon in the installed `YapCord.exe`, and wraps that staged payload in the NSIS installer. The same branding is used for the setup EXE, shortcuts, app window, and tray. It does not execute or modify the supplied base installer.
 
-On Linux/WSL with Node.js/npm, 7-Zip (`7z`), and NSIS (`makensis`):
+On Linux/WSL with Node.js/npm, 7-Zip (`7z`), NSIS (`makensis`), and Wine (used by the Windows executable resource editor):
 
 ```bash
 npm ci
