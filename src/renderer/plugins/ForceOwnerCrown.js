@@ -8,6 +8,7 @@
 
 (function () {
   const CROWN_CLASS = 'ym-owner-crown';
+  const ROLE_BADGE = ':scope > .ym-custom-role-badge';
 
   // Real Yapper classes (verified against the other plugins that work).
   const MSG_AUTHOR = ':scope > .msg-body > .msg-head > .msg-author:not(.webhook-author)';
@@ -15,7 +16,7 @@
 
   YM.definePlugin({
     name: 'ForceOwnerCrown',
-    description: 'Shows a 👑 next to your own name everywhere (messages, member list, profile, voice). Client-side only — nobody else sees it.',
+    description: 'Shows a 👑 next to your own name where no YapCord role icon is present. Client-side only — nobody else sees it.',
     authors: ['YapCord'],
     tags: ['Appearance', 'Fun'],
     enabledByDefault: false,
@@ -46,6 +47,7 @@
 
       function addCrown(nameEl) {
         if (!nameEl || nameEl.querySelector(':scope > .' + CROWN_CLASS)) return;
+        if (nameEl.querySelector(ROLE_BADGE)) return;
         nameEl.append(YM.dom.h('span', {
           class: CROWN_CLASS,
           title: 'Server owner (shown only to you)',
@@ -145,7 +147,8 @@
 
       ctx.css(`
 .${CROWN_CLASS} { margin-left: 4px; font-size: 0.95em; line-height: 1; vertical-align: baseline; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
-html[data-ym-crown-gold] .msg-author:has(> .${CROWN_CLASS}) { color: #f5b301 !important; font-weight: 700; }
+html[data-ym-crown-gold] .msg-author:has(> .${CROWN_CLASS}),
+html[data-ym-crown-gold] .msg-author:has(> .ym-custom-role-badge[data-ym-role="owner"]) { color: #f5b301 !important; font-weight: 700; }
 `);
       const syncGold = () => document.documentElement.toggleAttribute('data-ym-crown-gold', !!ctx.settings.store.goldName);
       syncGold();

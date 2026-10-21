@@ -57,6 +57,7 @@ for file in \
   src/renderer/091-custom-badge.js \
   src/renderer/plugins/AlwaysAnimate.js \
   src/renderer/plugins/BetterFolders.js \
+  src/renderer/plugins/ForceOwnerCrown.js \
   src/renderer/plugins/CustomFontFiles.js; do
   cmp -s "$ROOT/$file" "$VERIFY/$file" || { echo "Packaged source mismatch: $file" >&2; exit 1; }
 done
