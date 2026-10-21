@@ -1,5 +1,5 @@
 Unicode True
-Name "YapCord 1.0 Setup"
+Name "YapCord 1.1 Setup"
 
 !ifndef OUTPUT_FILE
   !define OUTPUT_FILE "YapCord1.0.exe"
@@ -8,7 +8,7 @@ Name "YapCord 1.0 Setup"
   !define PAYLOAD_DIR "${__FILEDIR__}/../dist/win-payload"
 !endif
 !ifndef PRODUCT_VERSION
-  !define PRODUCT_VERSION "1.0.13"
+  !define PRODUCT_VERSION "1.1.0"
 !endif
 
 OutFile "${OUTPUT_FILE}"
@@ -24,13 +24,13 @@ Var StartMenuFolder
 
 !include "MUI2.nsh"
 
-!define PRODUCT_NAME "YapCord 1.0"
+!define PRODUCT_NAME "YapCord 1.1"
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TITLE "Welcome to YapCord 1.0"
+!define MUI_WELCOMEPAGE_TITLE "Welcome to YapCord 1.1"
 !define MUI_WELCOMEPAGE_TEXT "This setup installs YapCord as a separate desktop app. Its settings and login data use a separate YapCord 1.0 profile. Your regular Yapper and YapCord data are not modified.$\r$\n$\r$\nClick Next to choose where to install YapCord."
-!define MUI_DIRECTORYPAGE_TEXT_TOP "Choose the folder where YapCord 1.0 will be installed. This program folder is separate from your user data."
-!define MUI_STARTMENUPAGE_DEFAULTFOLDER "YapCord 1.0"
-!define MUI_FINISHPAGE_TITLE "YapCord 1.0 is ready"
+!define MUI_DIRECTORYPAGE_TEXT_TOP "Choose the folder where YapCord 1.1 will be installed. This program folder is separate from your user data."
+!define MUI_STARTMENUPAGE_DEFAULTFOLDER "YapCord 1.1"
+!define MUI_FINISHPAGE_TITLE "YapCord 1.1 is ready"
 !define MUI_FINISHPAGE_TEXT "YapCord has been installed. Your YapCord 1.0 profile remains separate from other Yapper/YapCord installations."
 !define MUI_FINISHPAGE_RUN "$INSTDIR\YapCord.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Launch YapCord"
@@ -45,7 +45,7 @@ Var StartMenuFolder
 
 VIProductVersion "${PRODUCT_VERSION}.0"
 VIAddVersionKey /LANG=1033 "ProductName" "YapCord"
-VIAddVersionKey /LANG=1033 "FileDescription" "YapCord 1.0 Windows Installer"
+VIAddVersionKey /LANG=1033 "FileDescription" "YapCord 1.1 Windows Installer"
 VIAddVersionKey /LANG=1033 "FileVersion" "${PRODUCT_VERSION}"
 VIAddVersionKey /LANG=1033 "ProductVersion" "${PRODUCT_VERSION}"
 VIAddVersionKey /LANG=1033 "LegalCopyright" "YapCord contributors"
@@ -62,9 +62,10 @@ Section "Install"
     CreateShortcut "$SMPROGRAMS\$StartMenuFolder\YapCord.lnk" "$INSTDIR\YapCord.exe" "" "$INSTDIR\yapcord.ico"
     CreateShortcut "$SMPROGRAMS\$StartMenuFolder\Uninstall YapCord.lnk" "$INSTDIR\Uninstall.exe"
   !insertmacro MUI_STARTMENU_WRITE_END
-  CreateShortcut "$DESKTOP\YapCord 1.0.lnk" "$INSTDIR\YapCord.exe" "" "$INSTDIR\yapcord.ico"
+    Delete "$DESKTOP\YapCord 1.0.lnk"
+    CreateShortcut "$DESKTOP\YapCord 1.1.lnk" "$INSTDIR\YapCord.exe" "" "$INSTDIR\yapcord.ico"
 
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\YapCord1.0" "DisplayName" "YapCord 1.0"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\YapCord1.0" "DisplayName" "YapCord 1.1"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\YapCord1.0" "DisplayVersion" "${PRODUCT_VERSION}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\YapCord1.0" "Publisher" "YapCord"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\YapCord1.0" "InstallLocation" "$INSTDIR"
@@ -76,6 +77,7 @@ SectionEnd
 
 Section "Uninstall"
   SetShellVarContext current
+  Delete "$DESKTOP\YapCord 1.1.lnk"
   Delete "$DESKTOP\YapCord 1.0.lnk"
   !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
   Delete "$SMPROGRAMS\$StartMenuFolder\YapCord.lnk"
