@@ -68,12 +68,17 @@ for file in \
   src/main/datadir.js \
   src/renderer/090-settings-ui.js \
   src/renderer/060-messages.js \
+  src/renderer/095-onboarding.js \
   src/renderer/091-custom-badge.js \
   build/icon.png \
   src/renderer/plugins/AlwaysAnimate.js \
   src/renderer/plugins/BetterFolders.js \
   src/renderer/plugins/ForceOwnerCrown.js \
-  src/renderer/plugins/CustomFontFiles.js; do
+  src/renderer/plugins/CustomFontFiles.js \
+  src/renderer/plugins/NoF1.js \
+  src/renderer/plugins/NoMiddleClickPaste.js \
+  src/renderer/plugins/PictureInPicture.js \
+  src/renderer/plugins/WebKeybinds.js; do
   cmp -s "$ROOT/$file" "$VERIFY/$file" || { echo "Packaged source mismatch: $file" >&2; exit 1; }
 done
 

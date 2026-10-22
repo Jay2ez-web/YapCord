@@ -80,8 +80,6 @@
   YM.onboarding = { open };
   YM.Events.on('boot:ready', () => {
     if (YM.settings.get(completedPath, false)) return;
-    setTimeout(() => {
-      if (!YM.settings.get(completedPath, false) && document.body) open(0);
-    }, 700);
+    if (!YM.settings.get(completedPath, false) && document.body) open(0);
   });
 })();
