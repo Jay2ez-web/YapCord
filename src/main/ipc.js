@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { app, ipcMain, shell, dialog, nativeImage, net } = require('electron');
+const { app, ipcMain, shell, dialog, nativeImage, net, systemPreferences } = require('electron');
 const { SITE_HOSTS, BUNDLED_THEMES_DIR } = require('./constants');
 const { safeName } = require('./themes');
 const { buildBundle } = require('./bundle');
@@ -165,6 +165,18 @@ function registerIpc(ctx) {
   });
 
   handle('ym:app:info', () => ({ ...appInfo(), netfilter: netfilter.stats() }));
+  handle('ym:voice:status', () => {
+    const status = (kind) => {
+      try {
+        return typeof systemPreferences?.getMediaAccessStatus === 'function'
+          ? systemPreferences.getMediaAccessStatus(kind)
+          : 'managed-by-browser';
+      } catch (_) {
+        return 'unknown';
+      }
+    };
+    return { platform: process.platform, microphone: status('microphone'), camera: status('camera') };
+  });
   handle('ym:update:status', () => updater ? updater.snapshot() : { state: 'unsupported' });
   handle('ym:update:check', () => updater ? updater.check() : ({ state: 'unsupported' }));
   handle('ym:update:download', () => {
