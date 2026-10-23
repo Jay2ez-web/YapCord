@@ -76,8 +76,9 @@ for file in \
   src/renderer/plugins/ForceOwnerCrown.js \
   src/renderer/plugins/CustomFontFiles.js \
   src/renderer/plugins/NoF1.js \
-  src/renderer/plugins/NoMiddleClickPaste.js \
   src/renderer/plugins/PictureInPicture.js \
+  src/renderer/plugins/Ported_messageContextMenu.js \
+  src/renderer/plugins/ShowHiddenChannels.js \
   src/renderer/plugins/WebKeybinds.js; do
   cmp -s "$ROOT/$file" "$VERIFY/$file" || { echo "Packaged source mismatch: $file" >&2; exit 1; }
 done
