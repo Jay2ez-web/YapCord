@@ -1,24 +1,69 @@
 {
+  
   "name": "yapcord",
+  
   "productName": "YapCord",
-  "version": "1.2.3",
+  
+  "version": "1.2.0",
+  
   "description": "Yapper desktop client with a best-of YapCord plugin, theme and settings system",
+  
   "main": "src/main/index.js",
+  
   "author": "YapCord contributors",
+  
   "license": "GPL-3.0-or-later",
+  
   "private": true,
+  
   "scripts": {
+    
     "build:win-installer": "bash tools/build-windows-installer.sh",
+    
     "test": "node --test",
+    
     "test:updater": "node --test test/update-protocol.test.js",
+    
     "build:autocorrect-engine": "node tools/build-autocorrect-engine.mjs",
+    
     "prebuild:win-installer": "npm run build:autocorrect-engine"
+    
   },
+  
   "devDependencies": {
+    
     "@electron/asar": "4.3.1",
+    
     "dictionary-en": "4.0.0",
+    
     "esbuild": "0.28.2",
+    
     "nspell": "2.1.5",
+    
     "rcedit": "5.0.2"
+    
   }
+  
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
