@@ -1,5 +1,5 @@
 Unicode True
-Name "YapCord 1.2.2 Setup"
+Name "YapCord 1.2.3 Setup"
 
 !ifndef OUTPUT_FILE
   !define OUTPUT_FILE "YapCord1.0.exe"
@@ -8,7 +8,7 @@ Name "YapCord 1.2.2 Setup"
   !define PAYLOAD_DIR "${__FILEDIR__}/../dist/win-payload"
 !endif
 !ifndef PRODUCT_VERSION
-  !define PRODUCT_VERSION "1.2.2"
+  !define PRODUCT_VERSION "1.2.3"
 !endif
 
 OutFile "${OUTPUT_FILE}"

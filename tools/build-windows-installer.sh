@@ -42,6 +42,14 @@ mkdir -p "$PAYLOAD" "$APP/build"
 
 # Reuse the supplied Windows/Electron runtime, but exclude NSIS's temporary installer plugins.
 7z x -y "$BASE" "-o$PAYLOAD" '-x!$PLUGINSDIR/*' >/dev/null
+if [[ ! -f "$PAYLOAD/YapCord.exe" || ! -d "$PAYLOAD/resources" ]]; then
+  WRAPPER="$(find "$PAYLOAD" -mindepth 1 -maxdepth 1 -type d -print -quit)"
+  EXTRA_FILE="$(find "$PAYLOAD" -mindepth 1 -maxdepth 1 -type f -print -quit)"
+  EXTRA_DIR="$(find "$PAYLOAD" -mindepth 1 -maxdepth 1 -type d ! -path "$WRAPPER" -print -quit)"
+  if [[ -n "$WRAPPER" && -z "$EXTRA_FILE" && -z "$EXTRA_DIR" && -f "$WRAPPER/YapCord.exe" && -d "$WRAPPER/resources" ]]; then
+    PAYLOAD="$WRAPPER"
+  fi
+fi
 [[ -f "$PAYLOAD/YapCord.exe" && -d "$PAYLOAD/resources" ]] || {
   echo "The base file is not a supported YapCord Windows installer." >&2
   exit 1
@@ -75,6 +83,9 @@ for file in \
   src/renderer/plugins/BetterFolders.js \
   src/renderer/plugins/ForceOwnerCrown.js \
   src/renderer/plugins/CustomFontFiles.js \
+  src/renderer/plugins/AutoCorrect.js \
+  src/renderer/plugins/AutoCorrectEngine.js \
+  src/renderer/plugins/AutoCorrectEngine.LICENSE.md \
   src/renderer/plugins/NoF1.js \
   src/renderer/plugins/PictureInPicture.js \
   src/renderer/plugins/Ported_messageContextMenu.js \

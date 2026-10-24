@@ -6,22 +6,29 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../src/renderer/plugins/AutoCorrect.js'), 'utf8');
 
-function loadPlugin(initialEnabled) {
+function loadPlugin(initialEnabled, spellchecker = null) {
   let definition;
   let enabled = initialEnabled;
   let inputListener;
+  let keyDownListener;
   let removedListener = false;
+  let keyDownRemoved = false;
   const document = {
     addEventListener(type, listener, capture) {
-      assert.equal(type, 'input');
       assert.equal(capture, true);
-      inputListener = listener;
+      if (type === 'input') inputListener = listener;
+      else if (type === 'keydown') keyDownListener = listener;
+      else assert.fail(`unexpected listener type: ${type}`);
     },
     removeEventListener(type, listener, capture) {
-      assert.equal(type, 'input');
-      assert.equal(listener, inputListener);
       assert.equal(capture, true);
-      removedListener = true;
+      if (type === 'input') {
+        assert.equal(listener, inputListener);
+        removedListener = true;
+      } else if (type === 'keydown') {
+        assert.equal(listener, keyDownListener);
+        keyDownRemoved = true;
+      } else assert.fail(`unexpected listener type: ${type}`);
     },
   };
   const YM = {
@@ -59,6 +66,10 @@ function loadPlugin(initialEnabled) {
         this.selectionEnd = adjust(oldEnd);
       }
     }
+    setSelectionRange(start, end) {
+      this.selectionStart = start;
+      this.selectionEnd = end;
+    }
     dispatchEvent(event) {
       this.events.push(event);
       if (event.type === 'input' && inputListener) {
@@ -67,8 +78,21 @@ function loadPlugin(initialEnabled) {
       return true;
     }
   }
-  vm.runInNewContext(source, { YM, document, HTMLTextAreaElement: FakeTextarea, InputEvent: FakeInputEvent });
-  return { plugin: definition, enabled, getInputListener: () => inputListener, wasListenerRemoved: () => removedListener, FakeTextarea };
+  vm.runInNewContext(source, {
+    YM,
+    document,
+    window: { YapCordSpellchecker: { create: () => spellchecker } },
+    HTMLTextAreaElement: FakeTextarea,
+    InputEvent: FakeInputEvent,
+  });
+  return {
+    plugin: definition,
+    enabled,
+    getInputListener: () => inputListener,
+    getKeyDownListener: () => keyDownListener,
+    wasListenerRemoved: () => removedListener && keyDownRemoved,
+    FakeTextarea,
+  };
 }
 
 test('AutoCorrect enables only when the user has not explicitly set an enabled state', () => {
@@ -78,43 +102,87 @@ test('AutoCorrect enables only when the user has not explicitly set an enabled s
   assert.equal(loadPlugin(false).enabled, false);
 });
 
-test('built-in and custom corrections preserve case and support multiword replacements', () => {
+test('dictionary suggestions preserve case without a hand-maintained typo list', () => {
   const { plugin } = loadPlugin(undefined);
-  const dict = plugin.api.buildDictionary('teh=thee\ncustomtypo=custom phrase');
-  assert.equal(plugin.api.findCorrection('teh ', 4, dict).fixed, 'thee');
-  assert.equal(plugin.api.findCorrection('Teh ', 4, dict).fixed, 'Thee');
-  assert.equal(plugin.api.findCorrection('TEH ', 4, dict).fixed, 'THEE');
-  assert.equal(plugin.api.findCorrection('grammerly ', 10, dict).fixed, 'Grammarly');
-  assert.equal(plugin.api.findCorrection('automatcly ', 11, dict).fixed, 'automatically');
-  assert.equal(plugin.api.findCorrection('alot ', 5, dict).fixed, 'a lot');
+  const checker = {
+    correct: (word) => word === 'the' || word === 'grammarly' || word === 'automatically',
+    suggest: (word) => ({ teh: ['the'], grammerly: ['grammarly'], automatcly: ['automatically'] }[word] || []),
+  };
+  assert.equal(plugin.api.findCorrection('teh ', 4, checker).fixed, 'the');
+  assert.equal(plugin.api.findCorrection('Teh ', 4, checker).fixed, 'The');
+  assert.equal(plugin.api.findCorrection('grammerly ', 10, checker).fixed, 'grammarly');
+  assert.equal(plugin.api.findCorrection('automatcly ', 11, checker).fixed, 'automatically');
+  assert.equal(plugin.api.findCorrection('teh ', 4), null);
 });
 
 test('corrections wait for a safe boundary and preserve punctuation', () => {
   const { plugin } = loadPlugin(undefined);
-  const dict = plugin.api.buildDictionary('');
-  assert.equal(plugin.api.findCorrection('teh', 3, dict), null);
-  const sentence = plugin.api.findCorrection('teh. ', 5, dict);
+  const checker = { correct: (word) => word === 'the' || word === 'their', suggest: (word) => ({ teh: ['the'], thier: ['their'] }[word] || []) };
+  assert.equal(plugin.api.findCorrection('teh', 3, checker), null);
+  const sentence = plugin.api.findCorrection('teh. ', 5, checker);
   assert.equal(sentence.fixed, 'the');
   assert.equal(sentence.start, 0);
   assert.equal(sentence.end, 3);
-  assert.equal(plugin.api.findCorrection('Thier!', 6, dict).fixed, 'Their');
+  assert.equal(plugin.api.findCorrection('Thier!', 6, checker).fixed, 'Their');
 });
 
 test('URLs, domains, mentions, hashtags, identifiers, and code are left unchanged', () => {
   const { plugin } = loadPlugin(undefined);
-  const dict = plugin.api.buildDictionary('');
   for (const value of ['www.teh ', 'https://teh ', 'example.teh ', 'mail@teh ', '@teh ', '#teh ', 'foo_teh ', '`teh `', '```\nteh ']) {
-    assert.equal(plugin.api.findCorrection(value, value.length, dict), null, value);
+    assert.equal(plugin.api.findCorrection(value, value.length), null, value);
   }
-  assert.equal(plugin.api.findCorrection('caféteh ', 8, dict), null);
+  assert.equal(plugin.api.findCorrection('caféteh ', 8), null);
+});
+
+test('offline spelling engine suggestions correct a uniquely nearest misspelling', () => {
+  const { plugin } = loadPlugin(undefined);
+  const checker = {
+    correct: (word) => word === 'spelling',
+    suggest: () => ['spelling'],
+  };
+  const correction = plugin.api.findCorrection('speling ', 8, checker);
+  assert.deepEqual(JSON.parse(JSON.stringify(correction)), { start: 0, end: 7, fixed: 'spelling' });
+  assert.equal(plugin.api.findCorrection('speling ', 8, {
+    correct: () => false,
+    suggest: () => ['spelling', 'spieling'],
+  }), null);
+});
+
+test('offline grammar rules fix safe capitalization, duplicate words, articles, and common homophones', () => {
+  const { plugin } = loadPlugin(undefined);
+  const correction = (value) => plugin.api.findCorrection(value, value.length);
+  assert.equal(correction('i ').fixed, 'I');
+  assert.equal(plugin.api.editDistance('teh', 'the'), 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(correction('the the '))), { start: 0, end: 7, fixed: 'the' });
+  assert.deepEqual(JSON.parse(JSON.stringify(correction('a apple '))), { start: 0, end: 7, fixed: 'an apple' });
+  assert.equal(correction('a honest ').fixed, 'an honest');
+  assert.equal(correction('an hour '), null);
+  assert.equal(correction('an user ').fixed, 'a user');
+  assert.equal(correction('your welcome ').fixed, "you're welcome");
+  assert.equal(correction('could of ').fixed, "could've");
+});
+
+test('bundled English spell engine runs locally and supplies no network interface', () => {
+  const engineSource = fs.readFileSync(path.join(__dirname, '../src/renderer/plugins/AutoCorrectEngine.js'), 'utf8');
+  const window = {};
+  vm.runInNewContext(engineSource, { window });
+  assert.equal(typeof window.YapCordSpellchecker.create, 'function');
+  const checker = window.YapCordSpellchecker.create();
+  assert.equal(checker.correct('message'), true);
+  assert.equal(checker.correct('speling'), false);
+  assert.ok(checker.suggest('speling').includes('spelling'));
+  assert.equal(window.YapCordSpellchecker.fetch, undefined);
 });
 
 test('typing autocorrects the final word, dispatches an input replacement, and cleans up', async () => {
-  const loaded = loadPlugin(undefined);
+  const loaded = loadPlugin(undefined, {
+    correct: (word) => word === 'the',
+    suggest: (word) => word === 'teh' ? ['the'] : [],
+  });
   const cleanup = [];
   const ctx = {
     settings: {
-      store: { autoCorrect: true, customCorrections: '' },
+      store: { autoCorrect: true },
       onChange: () => () => undefined,
     },
     cleanup: (fn) => cleanup.push(fn),
@@ -127,6 +195,15 @@ test('typing autocorrects the final word, dispatches an input replacement, and c
   assert.equal(field.selectionStart, 4);
   assert.equal(field.events.length, 1);
   assert.equal(field.events[0].inputType, 'insertReplacementText');
+  let prevented = false;
+  loaded.getKeyDownListener()({
+    key: 'z', ctrlKey: true, metaKey: false, shiftKey: false, target: field,
+    preventDefault() { prevented = true; },
+  });
+  assert.equal(prevented, true);
+  assert.equal(field.value, 'teh ');
+  assert.equal(field.selectionStart, 4);
+  assert.equal(field.events.length, 2);
   cleanup[0]();
   assert.equal(loaded.wasListenerRemoved(), true);
 });
@@ -135,7 +212,7 @@ test('pasted text and disabled settings are not autocorrected', async () => {
   const loaded = loadPlugin(undefined);
   const ctx = {
     settings: {
-      store: { autoCorrect: true, customCorrections: '' },
+      store: { autoCorrect: true },
       onChange: () => () => undefined,
     },
     cleanup: () => undefined,
