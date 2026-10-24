@@ -37,19 +37,26 @@
 
   YM.definePlugin({
     name: 'BetterFolders',
-    description: 'Shows the servers of an open folder in a dedicated sidebar and adds folder related improvements.',
+    description: 'Shows open folders in a full sidebar with names, unread indicators, and badges, or a compact icon rail.',
     authors: ['Vencord (ported to Yapper)'],
     tags: ['Servers', 'Appearance'],
     enabledByDefault: true,
     api: { closeFolders },
     options: {
       sidebar: { type: 'boolean', default: true, description: 'Display servers from the open folder(s) on a dedicated sidebar' },
+      sidebarStyle: {
+        type: 'select', default: 'expanded', description: 'Choose a full folder panel with names or the compact icon rail',
+        options: [
+          { label: 'Full panel with names', value: 'expanded' },
+          { label: 'Compact icon rail', value: 'icons' },
+        ],
+      },
       sidebarAnim: { type: 'boolean', default: true, description: 'Animate opening the folder sidebar' },
       keepIcons: { type: 'boolean', default: false, description: 'Keep showing the folder servers in the main list too' },
       showFolderIcon: {
         type: 'select',
         default: 'always',
-        description: 'Show the folder icon above its servers in the sidebar',
+        description: 'Show the folder icon above its servers in compact icon-rail mode',
         options: [
           { label: 'Never', value: 'never' },
           { label: 'Always', value: 'always' },
@@ -167,7 +174,8 @@
         if (!r) return;
         const folders = describe();
         document.documentElement.classList.toggle('ym-bf-hide', !!s.sidebar && !s.keepIcons && folders.length > 0);
-        const sig = JSON.stringify([folders, s.showFolderIcon]);
+        const expanded = s.sidebarStyle !== 'icons';
+        const sig = JSON.stringify([folders, s.showFolderIcon, s.sidebarStyle]);
         if (sig === signature && sidebar && sidebar.isConnected && sidebarRail === r) return;
         signature = sig;
 
@@ -178,39 +186,52 @@
           return;
         }
         const showIcon = s.showFolderIcon === 'always' || (s.showFolderIcon === 'multiple' && folders.length > 1);
-        const fresh = h('div', { class: 'ym-bf-sidebar' + (s.sidebarAnim ? ' ym-bf-anim' : ''), 'aria-label': 'Folder servers' },
-          folders.map((f) => h('div', { class: 'ym-bf-folder', style: f.color ? { '--folder': f.color } : undefined },
-            showIcon ? h('button', {
-              class: 'rail-item rail-folder open ym-bf-head',
-              title: f.title,
-              'aria-label': f.title,
-              html: f.headHtml,
-              onClick: () => {
-                const r2 = rail();
-                const open = r2 && [...r2.querySelectorAll('.rail-folder-open')].find((o) => o.dataset.railRow === f.id);
-                const b = open && open.querySelector('button.rail-folder');
-                if (b) click(b);
-              },
-            }) : null,
-            f.servers.map((sv, i) => h('div', { class: 'rail-wrap' },
-              h('span', { class: 'rail-pill' + (sv.active ? ' on' : sv.dot ? ' dot' : '') }),
-              h('button', {
-                class: 'rail-item' + (sv.active ? ' active' : '') + (sv.muted ? ' muted' : ''),
-                title: sv.title,
-                'aria-label': sv.title,
-                html: sv.html,
-                onClick: () => {
-                  const b = freshButton(f.id, i);
-                  if (b) b.click();
-                },
-                onContextMenu: (e) => {
-                  const b = freshButton(f.id, i);
-                  if (!b) return;
-                  e.preventDefault();
-                  b.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY }));
-                },
-              }),
-              sv.badge ? h('span', { class: 'rail-badge' }, sv.badge) : null)))));
+        const toggleFolder = (folder) => {
+          const r2 = rail();
+          const open = r2 && [...r2.querySelectorAll('.rail-folder-open')].find((o) => o.dataset.railRow === folder.id);
+          const b = open && open.querySelector('button.rail-folder');
+          if (b) click(b);
+        };
+        const onServerContextMenu = (folder, index, e) => {
+          const b = freshButton(folder.id, index);
+          if (!b) return;
+          e.preventDefault();
+          b.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY }));
+        };
+        const compactServer = (f, sv, i) => h('div', { class: 'rail-wrap' },
+          h('span', { class: 'rail-pill' + (sv.active ? ' on' : sv.dot ? ' dot' : '') }),
+          h('button', {
+            class: 'rail-item' + (sv.active ? ' active' : '') + (sv.muted ? ' muted' : ''),
+            title: sv.title, 'aria-label': sv.title, html: sv.html,
+            onClick: () => { const b = freshButton(f.id, i); if (b) b.click(); },
+            onContextMenu: (e) => onServerContextMenu(f, i, e),
+          }),
+          sv.badge ? h('span', { class: 'rail-badge' }, sv.badge) : null);
+        const expandedServer = (f, sv, i) => h('div', { class: 'ym-bf-server-row' + (sv.active ? ' active' : '') + (sv.muted ? ' muted' : '') },
+          h('span', { class: 'ym-bf-server-status' + (sv.active ? ' active' : sv.dot ? ' unread' : '') }),
+          h('button', {
+            class: 'ym-bf-server-button', type: 'button', title: sv.title, 'aria-label': sv.title,
+            onClick: () => { const b = freshButton(f.id, i); if (b) b.click(); },
+            onContextMenu: (e) => onServerContextMenu(f, i, e),
+          }, h('span', { class: 'ym-bf-server-icon', html: sv.html }), h('span', { class: 'ym-bf-server-name' }, sv.title || 'Server')),
+          sv.badge ? h('span', { class: 'ym-bf-server-badge' }, sv.badge) : null);
+        const fresh = h('aside', {
+          class: 'ym-bf-sidebar' + (expanded ? ' ym-bf-expanded' : '') + (s.sidebarAnim ? ' ym-bf-anim' : ''),
+          'aria-label': 'Folder servers',
+        }, folders.map((f) => h('section', {
+          class: 'ym-bf-folder',
+          style: f.color ? { '--folder': f.color } : undefined,
+          'aria-label': f.title || 'Folder',
+        }, expanded
+          ? h('button', {
+            class: 'ym-bf-folder-heading', type: 'button', title: 'Toggle ' + (f.title || 'folder'),
+            onClick: () => toggleFolder(f),
+          }, h('span', { class: 'ym-bf-folder-icon', html: f.headHtml }), h('span', { class: 'ym-bf-folder-name' }, f.title || 'Folder'))
+          : (showIcon ? h('button', {
+            class: 'rail-item rail-folder open ym-bf-head', title: f.title, 'aria-label': f.title, html: f.headHtml,
+            onClick: () => toggleFolder(f),
+          }) : null),
+        f.servers.map((sv, i) => expanded ? expandedServer(f, sv, i) : compactServer(f, sv, i)))));
         if (sidebar && sidebar.isConnected && sidebarRail === r) sidebar.replaceWith(fresh);
         else {
           if (sidebar) sidebar.remove();
@@ -268,13 +289,36 @@
 
       ctx.css(`
 .ym-bf-sidebar{background:var(--bg-rail);display:flex;flex-direction:column;align-items:center;gap:8px;width:72px;flex-shrink:0;padding:12px 0;overflow-y:auto;scrollbar-width:none;border-left:1px solid var(--border)}
+.ym-bf-sidebar.ym-bf-expanded{align-items:stretch;gap:10px;width:236px;padding:12px 8px}
 .ym-bf-sidebar::-webkit-scrollbar{display:none}
-.ym-bf-anim{animation:ym-bf-in .2s ease}
-@keyframes ym-bf-in{from{width:0;opacity:0}to{width:72px;opacity:1}}
+.ym-bf-anim{animation:ym-bf-in .18s ease both}
+@keyframes ym-bf-in{from{opacity:0;transform:translateX(6px)}to{opacity:1;transform:translateX(0)}}
 .ym-bf-folder{display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;padding:6px 0}
 .ym-bf-folder:before{content:"";position:absolute;inset:0 12px;border-radius:16px;background:color-mix(in srgb,var(--folder,var(--accent)) 14%,var(--bg-elev));pointer-events:none}
 .ym-bf-folder>*{position:relative}
 .ym-bf-head{color:var(--folder,var(--accent))}
+.ym-bf-expanded .ym-bf-folder{align-items:stretch;gap:3px;padding:7px 6px;border-radius:12px;background:color-mix(in srgb,var(--folder,var(--accent)) 10%,var(--bg-elev))}
+.ym-bf-expanded .ym-bf-folder:before{display:none}
+.ym-bf-folder-heading{display:flex;align-items:center;gap:9px;width:100%;min-width:0;min-height:38px;padding:4px 6px;border:0;border-radius:8px;background:transparent;color:var(--text);text-align:left;font:600 13px/1.2 system-ui,sans-serif;cursor:pointer}
+.ym-bf-folder-heading:hover{background:color-mix(in srgb,var(--folder,var(--accent)) 15%,transparent)}
+.ym-bf-folder-icon{display:grid;place-items:center;width:28px;height:28px;flex:0 0 28px;border-radius:8px;color:var(--folder,var(--accent));overflow:hidden}
+.ym-bf-folder-icon svg{max-width:100%;max-height:100%}
+.ym-bf-folder-name,.ym-bf-server-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ym-bf-folder-name{flex:1}
+.ym-bf-server-row{display:flex;align-items:center;gap:7px;min-width:0;min-height:38px;padding:0 3px;border-radius:8px}
+.ym-bf-server-row:hover{background:color-mix(in srgb,var(--text) 7%,transparent)}
+.ym-bf-server-row.active{background:color-mix(in srgb,var(--folder,var(--accent)) 14%,transparent)}
+.ym-bf-server-status{width:3px;height:18px;flex:0 0 3px;border-radius:4px;background:transparent}
+.ym-bf-server-status.active{background:var(--folder,var(--accent))}
+.ym-bf-server-status.unread{width:6px;height:6px;border-radius:50%;background:var(--text)}
+.ym-bf-server-button{display:flex;align-items:center;gap:9px;flex:1;min-width:0;min-height:34px;padding:3px 5px;border:0;border-radius:7px;background:transparent;color:var(--text);text-align:left;font:500 12px/1.25 system-ui,sans-serif;cursor:pointer}
+.ym-bf-server-button:hover{background:color-mix(in srgb,var(--text) 8%,transparent)}
+.ym-bf-server-row.active .ym-bf-server-button{color:var(--folder,var(--accent))}
+.ym-bf-server-row.muted .ym-bf-server-button{opacity:.58}
+.ym-bf-server-icon{display:grid;place-items:center;width:26px;height:26px;flex:0 0 26px;overflow:hidden;border-radius:8px}
+.ym-bf-server-icon img,.ym-bf-server-icon svg{max-width:100%;max-height:100%;border-radius:inherit}
+.ym-bf-server-name{flex:1}
+.ym-bf-server-badge{max-width:42px;padding:2px 6px;border-radius:999px;background:var(--danger,#ed4245);color:#fff;font-size:10px;font-weight:700;line-height:1.2;white-space:nowrap}
 .ym-bf-hide .rail-folder-open>.drag-list{display:none}
 .ym-bf-hide .rail-folder-open:before{display:none}
 `);

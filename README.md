@@ -1,6 +1,6 @@
 # YapCord
 
-YapCord is a desktop client built on Yapper. The standalone Windows app is branded **YapCord**; the latest stable release is **YapCord 1.1.1** (version `1.1.1`), and the current development build is `1.2.1`. The installer keeps the existing `YapCord1.0` install/profile paths so upgrades preserve the existing app data.
+YapCord is a desktop client built on Yapper. The standalone Windows app is branded **YapCord**; the latest stable release is **YapCord 1.1.1** (version `1.1.1`), and the current development build is `1.2.2`. The installer keeps the existing `YapCord1.0` install/profile paths so upgrades preserve the existing app data.
 
 ## Profiles and included features
 
@@ -9,6 +9,8 @@ The standalone installer keeps settings, themes, logs, and the login session in 
 The source includes the Electron app, multiple native windows, 118 renderer plugins, offline opt-in AutoCorrect with local custom typo pairs, local diagnostics, the NSIS installer, and the Windows updater. The updater accepts only published stable releases whose Ed25519-signed manifest matches the app, version, tag, channel, installer name, size, and SHA-256 digest. It downloads in the background when enabled, but only installs after the user chooses **Install and restart**.
 
 **Notification Tweaks** has an **Import sound** option for a personal message-notification sound. It accepts audio files up to 1.5 MB, saves the selected file locally in YapCord settings, applies the plugin's volume control, and provides a test-play and remove button. Without an imported sound, the built-in tone remains available.
+
+**BetterFolders** opens to a full folder panel with folder titles, server icons and names, unread indicators, and badges. The previous compact icon rail is still available as a setting.
 
 ### Suggested plugin adaptations
 
