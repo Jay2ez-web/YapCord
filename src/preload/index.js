@@ -48,6 +48,7 @@ if (onSite && window.top === window) {
     app: {
       info: () => ipcRenderer.invoke('ym:app:info'),
       metrics: () => ipcRenderer.invoke('ym:app:metrics'),
+      voiceStatus: () => ipcRenderer.invoke('ym:voice:status'),
       updateStatus: () => ipcRenderer.invoke('ym:update:status'),
       checkForUpdates: () => ipcRenderer.invoke('ym:update:check'),
       downloadUpdate: () => ipcRenderer.invoke('ym:update:download'),

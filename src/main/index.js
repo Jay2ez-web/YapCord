@@ -1,6 +1,6 @@
 'use strict';
 const path = require('path');
-const { app, BrowserWindow, Menu, Tray, nativeImage, session, shell, net } = require('electron');
+const { app, BrowserWindow, Menu, Tray, nativeImage, session, shell, net, systemPreferences } = require('electron');
 
 const C = require('./constants');
 const log = require('./log');
@@ -127,7 +127,11 @@ function main() {
   function setupSession(ses) {
     ses.setPermissionRequestHandler((wc, permission, callback, details) => {
       const origin = (details && details.requestingUrl) || wc.getURL();
-      callback(isTrustedOrigin(origin) && ALLOWED_PERMISSIONS.has(permission));
+      const allowed = isTrustedOrigin(origin) && ALLOWED_PERMISSIONS.has(permission);
+      if (!allowed && (permission === 'media' || permission === 'audioCapture' || permission === 'videoCapture')) {
+        log.warn('blocked media permission request:', permission, origin);
+      }
+      callback(allowed);
     });
     ses.setPermissionCheckHandler((wc, permission, requestingOrigin) =>
       isTrustedOrigin(requestingOrigin || (wc && wc.getURL()) || '') && ALLOWED_PERMISSIONS.has(permission),
@@ -135,8 +139,8 @@ function main() {
     if (typeof ses.setDevicePermissionHandler === 'function') {
       ses.setDevicePermissionHandler((details) => {
         const origin = details && (details.origin || details.requestingOrigin || details.securityOrigin);
-        const device = details && details.deviceType;
-        return isTrustedOrigin(origin) && (device === 'microphone' || device === 'camera');
+        const device = String(details && details.deviceType || '').toLowerCase();
+        return isTrustedOrigin(origin) && ['microphone', 'camera', 'mic', 'video'].includes(device);
       });
     }
     netfilter.install(ses);

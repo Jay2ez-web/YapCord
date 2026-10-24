@@ -408,8 +408,9 @@ async function pageUpdater(root) {
     if (s.state === 'available') actions.append(btn('Download update', async () => { try { render(await YM.native.app.downloadUpdate()); } catch (err) { render({ state: 'error', error: err.message }); } }));
     if (s.state === 'ready') actions.append(btn('Install and restart', async () => { try { await YM.native.app.installUpdate(); render({ state: 'installing' }); } catch (err) { render({ state: 'error', error: err.message }); } }));
     if (!['checking', 'downloading', 'installing'].includes(s.state)) actions.append(btn('Check for Updates', async () => { setMessage(''); try { render(await YM.native.app.checkForUpdates()); } catch (err) { render({ state: 'error', error: err.message }); } }, 'ym-btn-update'));
-    if (s.state === 'up-to-date' || s.state === 'available') lastCheckedAt = Date.now();
+    if (s.lastCheckedAt) lastCheckedAt = s.lastCheckedAt;
     lastChecked.textContent = lastCheckedAt ? 'Last checked: ' + new Date(lastCheckedAt).toLocaleString() : 'Last checked: Never';
+    if (s.state === 'unsupported') details.append(h('span', { class: 'ym-hint' }, 'The signed installer updater currently runs on Windows. Linux uses the AppImage release directly.'));
     if (s.state === 'ready' && current().notifyReady && notifiedVersion !== (s.available && s.available.version)) {
       notifiedVersion = s.available && s.available.version || 'ready';
       YM.toast('A YapCord update is ready to install.', { type: 'success' });
@@ -518,11 +519,41 @@ async function pageApp(root) {
   const setup = btn('Open first-run setup', () => YM.onboarding && YM.onboarding.open(0), 'ym-btn-ghost');
   root.append(h('div', { class: 'ym-toolbar' }, setup));
 
+  const voiceStatus = h('div', { class: 'ym-hint' }, 'Checking microphone and camera permissions…');
+  const refreshVoice = btn('Refresh voice status', async () => {
+    try {
+      const s = await YM.native.app.voiceStatus();
+      voiceStatus.textContent = `Platform: ${s.platform} · Microphone: ${s.microphone} · Camera: ${s.camera}`;
+    } catch (err) {
+      voiceStatus.textContent = 'Voice diagnostics unavailable: ' + ((err && err.message) || err);
+    }
+  }, 'ym-btn-small ym-btn-ghost');
+  root.append(h('h3', {}, 'Voice diagnostics'), h('p', { class: 'ym-hint' }, 'YapCord grants microphone and camera requests only to trusted Yapper pages. This reports the operating-system permission state; it does not start recording.'), voiceStatus, h('div', { class: 'ym-toolbar' }, refreshVoice));
+  refreshVoice.click();
+
   const perf = h('div', { class: 'ym-list' });
+  const pluginPerf = h('div', { class: 'ym-list' });
   const perfNote = h('p', { class: 'ym-hint' }, 'Process memory is the current working set. CPU is sampled between refreshes. Metrics stay on this device.');
   const refresh = btn('Refresh now', () => updateMetrics(), 'ym-btn-small ym-btn-ghost');
   const metricStatus = h('div', { class: 'ym-hint' }, 'Collecting local process metrics…');
-  root.append(h('h3', {}, 'Performance'), perfNote, h('div', { class: 'ym-toolbar' }, refresh), metricStatus, perf);
+  root.append(h('h3', {}, 'Performance'), perfNote, h('div', { class: 'ym-toolbar' }, refresh), metricStatus, perf,
+    h('h3', {}, 'Plugin performance'),
+    h('p', { class: 'ym-hint' }, 'Startup time and cleanup counts are measured locally. Plugins with errors remain visible here.'),
+    pluginPerf);
+
+  function updatePluginMetrics() {
+    const rows = typeof YM.plugins.performance === 'function' ? YM.plugins.performance() : [];
+    pluginPerf.replaceChildren();
+    rows.sort((a, b) => (b.startMs || 0) - (a.startMs || 0));
+    for (const row of rows) {
+      const status = row.error ? 'error' : row.running ? 'running' : row.enabled ? 'enabled' : 'off';
+      const timing = `${(row.startMs || 0).toFixed(1)} ms start · ${row.cleanupCount || 0} cleanups`;
+      pluginPerf.append(h('div', { class: 'ym-card' }, h('div', { class: 'ym-card-row' },
+        h('b', {}, row.name), h('span', { class: 'ym-hint' }, status)),
+        h('div', { class: 'ym-hint' }, row.error || timing)));
+    }
+    if (!rows.length) pluginPerf.append(h('p', { class: 'ym-hint' }, 'Plugin metrics are not available yet.'));
+  }
 
   async function updateMetrics() {
     try {
@@ -548,6 +579,9 @@ async function pageApp(root) {
     }
   }
   updateMetrics();
+  updatePluginMetrics();
+  unsub.push(YM.Events.on('plugin:state', updatePluginMetrics));
+  unsub.push(YM.Events.on('plugin:error', updatePluginMetrics));
   const metricsTimer = setInterval(updateMetrics, 2500);
   unsub.push(() => clearInterval(metricsTimer));
 

@@ -8,8 +8,9 @@
 // `ctx` (passed to start) auto-cleans on stop: ctx.cleanup(fn), ctx.css(text), ctx.watch(sel, fn), ctx.on(event, fn), ctx.interval(fn, ms).
 
 const registry = new Map();
-const running = new Map(); // name -> { cleanups: [] }
+const running = new Map(); // name -> { cleanups: [], startedAt, startMs, stopMs }
 const errors = new Map();
+const history = new Map();
 
 function makeCtx(plugin, state) {
   // A start() that finishes after the plugin was switched off again (async start) must not leave listeners behind:
@@ -71,26 +72,45 @@ const Plugins = (YM.plugins = {
   get: (name) => registry.get(name),
   isEnabled: (name) => YM.settings.isPluginEnabled(name),
   isRunning: (name) => running.has(name),
+  performance: () => [...registry.values()].map((plugin) => {
+    const state = running.get(plugin.name);
+    const last = history.get(plugin.name) || {};
+    const error = errors.get(plugin.name);
+    return {
+      name: plugin.name,
+      enabled: Plugins.isEnabled(plugin.name),
+      running: !!state,
+      startMs: Number(last.startMs) || 0,
+      stopMs: Number(last.stopMs) || 0,
+      cleanupCount: state ? state.cleanups.length : Number(last.cleanupCount) || 0,
+      startedAt: state ? state.startedAt : last.startedAt || 0,
+      error: error ? String(error.message || error) : '',
+    };
+  }),
 
   start(name) {
     const plugin = registry.get(name);
     if (!plugin || running.has(name)) return;
-    const state = { cleanups: [] };
+    const state = { cleanups: [], startedAt: Date.now(), startMs: 0, stopMs: 0 };
     running.set(name, state);
     errors.delete(name);
+    const started = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
     try {
       if (plugin.patches) YM.patches.register(name, plugin.patches);
       const ret = plugin.start && plugin.start(makeCtx(plugin, state));
+      state.startMs = Math.max(0, (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()) - started);
       if (typeof ret === 'function') state.cleanups.push(ret);
       else if (ret && typeof ret.then === 'function') {
         ret.then(
           (r) => {
+            state.startMs = Math.max(0, (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()) - started);
             if (typeof r === 'function') {
               if (running.get(name) === state) state.cleanups.push(r);
               else r();
             }
           },
           (err) => {
+            state.startMs = Math.max(0, (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()) - started);
             // An async start() that rejects must not leave half-started parts behind (CSS, listeners) nor show as running.
             if (running.get(name) === state) Plugins.stop(name);
             errors.set(name, err);
@@ -100,6 +120,7 @@ const Plugins = (YM.plugins = {
         );
       }
       YM.log.info('started plugin ' + name);
+      history.set(name, { startMs: state.startMs, stopMs: 0, cleanupCount: state.cleanups.length, startedAt: state.startedAt });
     } catch (err) {
       errors.set(name, err);
       YM.log.error('plugin ' + name + ' failed to start', err);
@@ -116,6 +137,7 @@ const Plugins = (YM.plugins = {
     if (!state) return;
     running.delete(name);
     state.stopped = true;
+    const stopped = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
     try {
       if (plugin && plugin.stop) plugin.stop();
     } catch (err) {
@@ -129,6 +151,8 @@ const Plugins = (YM.plugins = {
       }
     }
     if (plugin && plugin.patches) YM.patches.unregister(name);
+    const stopMs = Math.max(0, (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()) - stopped);
+    history.set(name, { startMs: state.startMs, stopMs, cleanupCount: state.cleanups.length, startedAt: state.startedAt });
     YM.Events.emit('plugin:state', name, false);
   },
 

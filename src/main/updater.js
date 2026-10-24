@@ -156,7 +156,7 @@ class Updater extends EventEmitter {
     this.platform = platform || process.platform;
     this.quit = quit;
     this.downloadDir = path.join(dataDir, 'updates');
-    this.state = { state: 'idle', currentVersion, available: null, error: null, progress: null };
+    this.state = { state: 'idle', currentVersion, available: null, error: null, progress: null, lastCheckedAt: null };
     this.checkPromise = null;
     this.downloadPromise = null;
   }
@@ -190,7 +190,7 @@ class Updater extends EventEmitter {
         .filter(({ release, info }) => release && !release.draft && !release.prerelease && info && info.channel === 'stable' && compareVersions(info, current) > 0)
         .sort((a, b) => compareVersions(b.info, a.info));
       if (!candidates.length) {
-        this.setState({ state: 'up-to-date', available: null, error: null, progress: null });
+        this.setState({ state: 'up-to-date', available: null, error: null, progress: null, lastCheckedAt: Date.now() });
         return this.snapshot();
       }
       const { release } = candidates[0];
@@ -218,11 +218,12 @@ class Updater extends EventEmitter {
         },
         error: null,
         progress: null,
+        lastCheckedAt: Date.now(),
       });
       return this.snapshot();
     } catch (error) {
       this.log.warn('update check failed:', error && error.message);
-      this.setState({ state: 'error', error: error && error.message ? error.message : String(error), progress: null });
+      this.setState({ state: 'error', error: error && error.message ? error.message : String(error), progress: null, lastCheckedAt: Date.now() });
       return this.snapshot();
     }
   }
